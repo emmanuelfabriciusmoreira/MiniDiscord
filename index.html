@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chatter</title>
+
+<!-- CSS -->
+<link rel="stylesheet" href="style.css">
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+</head>
+<body>
+
+<!-- Tela de Login/Cadastro -->
+<div id="auth-screen" class="login-screen">
+    <div class="login-box">
+        <h2>Mini Discord Online</h2>
+
+        <!-- Login -->
+        <div id="login-form">
+            <input type="text" id="loginUsername" placeholder="Digite seu nome...">
+            <input type="password" id="loginPassword" placeholder="Digite sua senha...">
+            <button id="loginBtn">Entrar</button>
+            <p>Não tem conta? <span id="showRegister">Cadastre-se</span></p>
+        </div>
+
+        <!-- Cadastro -->
+        <div id="register-form" style="display:none;">
+            <input type="text" id="registerUsername" placeholder="Escolha um nome...">
+            <input type="password" id="registerPassword" placeholder="Escolha uma senha...">
+            <input type="file" id="registerAvatar" accept="image/*">
+            <button id="registerBtn">Cadastrar</button>
+            <p>Já tem conta? <span id="showLogin">Entrar</span></p>
+        </div>
+
+        <p id="authMessage" style="color:#faa; margin-top:10px;"></p>
+    </div>
+</div>
+
+<!-- Tela do Chat -->
+<div id="chat-screen" class="container" style="display:none;">
+    <aside class="sidebar">
+        <h2>Servidores</h2>
+        <ul>
+            <li># Geral</li>
+            <li># Jogos</li>
+            <li># Música</li>
+        </ul>
+    </aside>
+
+    <main class="chat-area">
+        <div class="chat-header">
+            <h2># Geral</h2>
+            <button id="logoutBtn" style="float:right; padding:5px 10px; background:#F04747; border:none; border-radius:5px; cursor:pointer; color:white;">Sair</button>
+        </div>
+        <div class="chat-messages" id="messages"></div>
+        <div class="chat-input">
+            <input type="text" id="messageInput" placeholder="Digite sua mensagem...">
+            <button id="sendBtn">Enviar</button>
+        </div>
+    </main>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
