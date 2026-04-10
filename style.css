@@ -5,67 +5,22 @@
     font-family: Arial, sans-serif;
 }
 
-/* Trava a página inteira para não rolar o fundo */
+/* Trava o fundo para a página não ter duas barras de rolagem */
 body, html {
     background-color: #2f3136;
     color: #fff;
-    height: 100%;
+    height: 100vh;
     overflow: hidden; 
 }
 
-/* Login/Cadastro Screen */
-.login-screen {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100vh;
-    background-color: #2f3136;
-}
-
-.login-box {
-    background-color: #36393F;
-    padding: 40px;
-    border-radius: 10px;
-    text-align: center;
-    width: 300px;
-}
-
-.login-box input {
-    width: 100%;
-    padding: 10px;
-    margin-bottom: 15px;
-    border-radius: 5px;
-    border: none;
-}
-
-.login-box button {
-    width: 100%;
-    padding: 10px;
-    background-color: #5865F2;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    color: white;
-    margin-bottom: 10px;
-}
-
-.login-box button:hover {
-    background-color: #4752C4;
-}
-
-.login-box span {
-    color: #5865F2;
-    cursor: pointer;
-}
-
-/* Chat container - Ocupa a tela toda fixo */
+/* Container Principal */
 .container {
     display: flex;
     height: 100vh;
     width: 100vw;
 }
 
-/* Sidebar Fixa */
+/* Sidebar Estática */
 .sidebar {
     width: 200px;
     background-color: #202225;
@@ -73,14 +28,7 @@ body, html {
     display: flex;
     flex-direction: column;
     height: 100%;
-}
-
-.sidebar h2 {
-    margin-bottom: 20px;
-}
-
-.sidebar ul {
-    list-style: none;
+    flex-shrink: 0;
 }
 
 .sidebar li {
@@ -88,39 +36,41 @@ body, html {
     cursor: pointer;
     border-radius: 5px;
     margin-bottom: 5px;
+    list-style: none;
 }
 
 .sidebar li:hover, .sidebar li.active {
     background-color: #393d42;
-    color: #fff;
 }
 
-/* Área do Chat */
+/* Área da Direita */
 .chat-area {
     flex: 1;
     display: flex;
     flex-direction: column;
-    height: 100%;
+    height: 100%; /* Ocupa a altura da tela */
     background-color: #36393f;
+    overflow: hidden; /* Garante que nada saia daqui */
 }
 
 .chat-header {
-    padding: 20px;
+    padding: 15px 20px;
     background-color: #36393F;
     border-bottom: 1px solid #202225;
-    z-index: 10;
+    flex-shrink: 0; /* Não deixa o cabeçalho sumir */
 }
 
-/* MÁGICA: Só as mensagens rolam */
+/* ÁREA DE MENSAGENS (Onde o scroll acontece) */
 .chat-messages {
     flex: 1;
     padding: 20px;
-    overflow-y: auto; 
+    overflow-y: auto; /* Habilita o scroll vertical */
     display: flex;
     flex-direction: column;
+    min-height: 0; /* Essencial para o scroll funcionar em Flexbox */
 }
 
-/* Estilização da Barra de Rolagem (Estilo Discord) */
+/* Scrollbar estilo Discord */
 .chat-messages::-webkit-scrollbar {
     width: 8px;
 }
@@ -128,14 +78,11 @@ body, html {
     background: #202225;
     border-radius: 10px;
 }
-.chat-messages::-webkit-scrollbar-track {
-    background: transparent;
-}
 
 .message {
     display: flex;
     margin-bottom: 15px;
-    flex-shrink: 0; /* Impede a mensagem de "esmagar" */
+    flex-shrink: 0;
 }
 
 .avatar {
@@ -144,7 +91,6 @@ body, html {
     border-radius: 50%;
     margin-right: 10px;
     object-fit: cover;
-    flex-shrink: 0;
 }
 
 .message-content {
@@ -154,17 +100,17 @@ body, html {
     max-width: 80%;
 }
 
-.message-content .username {
+.username {
     font-weight: bold;
-    color: #ffffff;
     margin-bottom: 3px;
 }
 
-/* Input Fixo no rodapé */
+/* Input fixo no fundo */
 .chat-input {
-    display: flex;
     padding: 20px;
     background-color: #36393f;
+    display: flex;
+    flex-shrink: 0; /* Garante que o input não suma */
 }
 
 .chat-input input {
@@ -186,10 +132,7 @@ body, html {
     color: white;
 }
 
-/* Container da Call (Jitsi) para não quebrar */
-#voice-container {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-}
+/* Telas de Login/Voz */
+.login-screen { display: flex; justify-content: center; align-items: center; height: 100vh; }
+.login-box { background: #36393F; padding: 40px; border-radius: 10px; width: 300px; text-align: center; }
+#voice-container { flex: 1; display: flex; flex-direction: column; }
