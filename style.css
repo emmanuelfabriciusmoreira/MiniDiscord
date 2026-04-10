@@ -1,17 +1,40 @@
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-    font-family: Arial, sans-serif;
-}
+* { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
 
 body, html {
     background-color: #2f3136;
     color: #fff;
     height: 100vh;
-    overflow: hidden; /* Não deixa a página toda rolar */
+    overflow: hidden;
 }
 
+/* TELA DE LOGIN (ARRUMADA) */
+.login-screen {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    background-color: #2f3136;
+    position: fixed;
+    width: 100%;
+    z-index: 100;
+}
+
+.login-box {
+    background-color: #36393f;
+    padding: 40px;
+    border-radius: 8px;
+    width: 320px;
+    box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+    text-align: center;
+}
+
+.login-box h2 { margin-bottom: 20px; font-size: 20px; }
+.login-box input { width: 100%; padding: 10px; margin-bottom: 15px; border-radius: 3px; border: none; background: #202225; color: #fff; }
+.login-box button { width: 100%; padding: 10px; background: #5865f2; color: white; border: none; border-radius: 3px; cursor: pointer; font-weight: bold; }
+.login-box p { margin-top: 15px; font-size: 14px; color: #b9bbbe; }
+.login-box span { color: #00aff4; cursor: pointer; }
+
+/* CONTAINER DO CHAT */
 .container {
     display: flex;
     height: 100vh;
@@ -19,115 +42,73 @@ body, html {
 }
 
 .sidebar {
-    width: 200px;
-    background-color: #202225;
-    padding: 20px;
+    width: 240px;
+    background-color: #2f3136;
     display: flex;
     flex-direction: column;
     height: 100%;
     flex-shrink: 0;
-}
-
-.sidebar li {
     padding: 10px;
-    cursor: pointer;
-    border-radius: 5px;
-    margin-bottom: 5px;
+}
+
+.sidebar h2 { padding: 10px; font-size: 16px; color: #8e9297; text-transform: uppercase; }
+.sidebar li { 
+    padding: 8px 12px; 
+    cursor: pointer; 
+    border-radius: 4px; 
+    color: #8e9297; 
     list-style: none;
+    margin-bottom: 2px;
 }
+.sidebar li:hover, .sidebar li.active { background-color: #393d42; color: #fff; }
 
-.sidebar li:hover, .sidebar li.active {
-    background-color: #393d42;
-}
-
+/* ÁREA DAS MENSAGENS */
 .chat-area {
     flex: 1;
     display: flex;
     flex-direction: column;
-    height: 100%;
     background-color: #36393f;
-    min-width: 0;
+    height: 100%;
 }
 
 .chat-header {
-    padding: 15px 20px;
-    background-color: #36393F;
-    border-bottom: 1px solid #202225;
-    flex-shrink: 0;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    background: #36393f;
+    border-bottom: 1px solid #26272b;
+    font-weight: bold;
 }
 
-/* AQUI ESTÁ A MÁGICA DO SCROLL */
 .chat-messages {
     flex: 1;
+    overflow-y: auto; /* Deixa rolar livre */
     padding: 20px;
-    overflow-y: auto !important; 
-    display: flex;
-    flex-direction: column;
-    height: 0; /* Isso força o Flexbox a criar o scroll interno */
-    min-height: 0;
 }
 
-/* Barra de rolagem estilo Discord */
-.chat-messages::-webkit-scrollbar {
-    width: 8px;
-}
-.chat-messages::-webkit-scrollbar-thumb {
-    background: #202225;
-    border-radius: 10px;
-}
+.message { display: flex; margin-bottom: 20px; }
+.avatar { width: 40px; height: 40px; border-radius: 50%; margin-right: 15px; object-fit: cover; }
+.username { font-weight: bold; margin-bottom: 5px; font-size: 15px; }
+.message-content { font-size: 15px; color: #dcddde; }
 
-.message {
-    display: flex;
-    margin-bottom: 15px;
-    flex-shrink: 0;
-}
-
-.avatar {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    margin-right: 10px;
-    object-fit: cover;
-}
-
-.message-content {
-    background-color: #40444B;
-    padding: 10px;
-    border-radius: 5px;
-    max-width: 80%;
-}
-
-.username {
-    font-weight: bold;
-    margin-bottom: 3px;
-}
-
+/* INPUT DE TEXTO */
 .chat-input {
     padding: 20px;
-    background-color: #36393f;
-    display: flex;
-    flex-shrink: 0;
+    background: #36393f;
 }
 
 .chat-input input {
-    flex: 1;
+    width: 100%;
     padding: 12px;
+    background: #40444b;
     border: none;
-    border-radius: 5px;
-    margin-right: 10px;
-    background-color: #40444B;
-    color: #fff;
+    border-radius: 8px;
+    color: #dcddde;
 }
 
-.chat-input button {
-    padding: 10px 20px;
-    background-color: #5865F2;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    color: white;
-}
+/* SCROLLBAR FININHA */
+.chat-messages::-webkit-scrollbar { width: 8px; }
+.chat-messages::-webkit-scrollbar-thumb { background: #202225; border-radius: 10px; }
 
-#voice-container { flex: 1; display: flex; flex-direction: column; }
-.login-screen { display: flex; justify-content: center; align-items: center; height: 100vh; }
-.login-box { background: #36393F; padding: 40px; border-radius: 10px; width: 300px; text-align: center; }
+#voice-container { flex: 1; display: flex; flex-direction: column; background: #000; }
