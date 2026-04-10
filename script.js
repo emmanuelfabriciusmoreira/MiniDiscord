@@ -1,4 +1,4 @@
-// 1. Configurações do seu Firebase (Dados reais do seu projeto)
+// 1. Configurações do seu Firebase
 const firebaseConfig = {
   apiKey: "AIzaSyC3mL24ZO-m7158yYVp2l2o1OuSbnEvoxE",
   authDomain: "mini-discord-cc0c5.firebaseapp.com",
@@ -37,6 +37,14 @@ const sendBtn = document.getElementById("sendBtn");
 const messageInput = document.getElementById("messageInput");
 const messages = document.getElementById("messages");
 const logoutBtn = document.getElementById("logoutBtn");
+
+// NOVOS ELEMENTOS PARA VOZ
+const startVoiceBtn = document.getElementById("startVoice");
+const stopVoiceBtn = document.getElementById("stopVoice");
+const voiceContainer = document.getElementById("voice-container");
+const textChatContent = document.getElementById("text-chat-content");
+const channelName = document.getElementById("channel-name");
+let jitsiApi = null;
 
 let currentUser = null;
 
@@ -78,7 +86,6 @@ registerBtn.addEventListener("click", async () => {
       });
       authMessage.style.color = "#3ba55c";
       authMessage.textContent = "Cadastro OK! Pode entrar.";
-      // Volta pro login pro usuário entrar
       setTimeout(() => showLogin.click(), 2000);
     };
     reader.readAsDataURL(avatarFile);
@@ -129,7 +136,7 @@ async function sendMessage(){
   messageInput.value = "";
 }
 
-// 7. Carregar mensagens (Snapshot = tempo real)
+// 7. Carregar mensagens
 function loadMessages(){
   db.collection("messages").orderBy("timestamp")
     .onSnapshot(snapshot => {
@@ -164,8 +171,42 @@ function appendMessage(message){
   messages.appendChild(messageElement);
 }
 
-// 8. Logout
+// 8. LÓGICA DE VOZ (JITSI)
+startVoiceBtn.addEventListener("click", () => {
+    if (!currentUser) return;
+
+    textChatContent.style.display = "none";
+    voiceContainer.style.display = "flex";
+    channelName.textContent = "🔊 Sala de Voz da DØMINUS";
+
+    const domain = "meet.jit.si";
+    const options = {
+        roomName: "DominusVoz_Sala_Exclusiva_99", // Nome da sala
+        width: "100%",
+        height: "100%",
+        parentNode: document.querySelector("#jitsi-iframe"),
+        userInfo: {
+            displayName: currentUser.username
+        },
+        configOverwrite: { startWithAudioMuted: false },
+        interfaceConfigOverwrite: { SHOW_JITSI_WATERMARK: false }
+    };
+    jitsiApi = new JitsiMeetExternalAPI(domain, options);
+});
+
+stopVoiceBtn.addEventListener("click", () => {
+    if (jitsiApi) {
+        jitsiApi.dispose();
+        jitsiApi = null;
+    }
+    voiceContainer.style.display = "none";
+    textChatContent.style.display = "block";
+    channelName.textContent = "# Geral";
+});
+
+// 9. Logout
 logoutBtn.addEventListener("click", async () => {
+  if (jitsiApi) jitsiApi.dispose();
   await auth.signOut();
-  location.reload(); // Recarrega a página para limpar tudo
+  location.reload();
 });
