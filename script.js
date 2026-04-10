@@ -8,12 +8,10 @@ const firebaseConfig = {
   measurementId: "G-5NX67429FX"
 };
 
-// Inicializar Firebase
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 
-// Elementos da Interface
 const authScreen = document.getElementById("auth-screen"), chatScreen = document.getElementById("chat-screen");
 const loginForm = document.getElementById("login-form"), registerForm = document.getElementById("register-form");
 const loginUsername = document.getElementById("loginUsername"), loginPassword = document.getElementById("loginPassword"), loginBtn = document.getElementById("loginBtn");
@@ -25,10 +23,11 @@ const startVoiceBtn = document.getElementById("startVoice"), stopVoiceBtn = docu
 
 let jitsiApi = null, currentUser = null, currentChannel = "geral", unsubscribe = null;
 
-// --- LOGIN E CADASTRO ---
+// TELAS
 showRegister.onclick = () => { loginForm.style.display = "none"; registerForm.style.display = "block"; };
 showLogin.onclick = () => { loginForm.style.display = "block"; registerForm.style.display = "none"; };
 
+// LOGIN/CADASTRO
 registerBtn.onclick = async () => {
   const email = registerUsername.value.trim() + "@minidiscord.com", password = registerPassword.value, avatarFile = registerAvatar.files[0];
   if(!registerUsername.value || !password || !avatarFile) return authMessage.textContent = "Preencha tudo!";
@@ -54,25 +53,22 @@ loginBtn.onclick = async () => {
   } catch(err) { authMessage.textContent = "Erro: " + err.message; }
 };
 
-// --- LOGICA DE CANAIS ---
+// CANAIS
 document.querySelectorAll('.channel-link').forEach(link => {
     link.onclick = (e) => {
         document.querySelectorAll('.channel-link').forEach(l => l.classList.remove('active'));
         e.target.classList.add('active');
-        
         currentChannel = e.target.getAttribute('data-channel');
         channelName.textContent = "# " + e.target.textContent.replace('# ', '');
-        
         messages.innerHTML = ""; 
         voiceContainer.style.display = "none"; 
         textChatContent.style.display = "block";
-        
         if (jitsiApi) { jitsiApi.dispose(); jitsiApi = null; }
         loadMessages();
     };
 });
 
-// --- MENSAGENS ---
+// MENSAGENS
 async function sendMessage(){
   const text = messageInput.value.trim(); 
   if(!text || !currentUser) return;
@@ -88,7 +84,6 @@ messageInput.onkeypress = (e) => { if(e.key === "Enter") sendMessage(); };
 
 function loadMessages(){
   if(unsubscribe) unsubscribe();
-  
   unsubscribe = db.collection("messages")
     .where("channel", "==", currentChannel)
     .orderBy("timestamp")
@@ -105,27 +100,17 @@ function loadMessages(){
                 </div>
             </div>`;
       });
-      
-      // FUNÇÃO DE SCROLL REFORÇADA
-      const jumpToBottom = () => {
-        messages.scrollTop = messages.scrollHeight;
-      };
-
-      // Executa em vários tempos para garantir que as imagens não quebrem o scroll
+      const jumpToBottom = () => { messages.scrollTop = messages.scrollHeight; };
       jumpToBottom();
-      setTimeout(jumpToBottom, 50);
-      setTimeout(jumpToBottom, 200);
-      setTimeout(jumpToBottom, 500);
+      setTimeout(jumpToBottom, 100);
+      setTimeout(jumpToBottom, 400);
     });
 }
 
-// --- CALL (VOZ) ---
+// CALLS
 startVoiceBtn.onclick = () => {
     if(!currentUser) return;
-    textChatContent.style.display = "none"; 
-    voiceContainer.style.display = "flex"; 
-    channelName.textContent = "🔊 CALL";
-    
+    textChatContent.style.display = "none"; voiceContainer.style.display = "flex"; channelName.textContent = "🔊 CALL";
     jitsiApi = new JitsiMeetExternalAPI("meet.jit.si", {
         roomName: "MiniDiscord_Call_" + firebaseConfig.projectId,
         width: "100%", height: "100%", parentNode: document.querySelector("#jitsi-iframe"),
@@ -136,13 +121,7 @@ startVoiceBtn.onclick = () => {
 stopVoiceBtn.onclick = () => {
     if (jitsiApi) jitsiApi.dispose(); 
     jitsiApi = null;
-    voiceContainer.style.display = "none"; 
-    textChatContent.style.display = "block"; 
-    channelName.textContent = "# " + currentChannel;
+    voiceContainer.style.display = "none"; textChatContent.style.display = "block"; channelName.textContent = "# " + currentChannel;
 };
 
-logoutBtn.onclick = () => { 
-    if(jitsiApi) jitsiApi.dispose();
-    auth.signOut(); 
-    location.reload(); 
-};
+logoutBtn.onclick = () => { auth.signOut(); location.reload(); };
