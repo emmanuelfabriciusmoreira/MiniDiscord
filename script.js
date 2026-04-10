@@ -8,11 +8,12 @@ const firebaseConfig = {
   measurementId: "G-5NX67429FX"
 };
 
+// Inicializar Firebase
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 
-// Elementos
+// Elementos da Interface
 const authScreen = document.getElementById("auth-screen"), chatScreen = document.getElementById("chat-screen");
 const loginForm = document.getElementById("login-form"), registerForm = document.getElementById("register-form");
 const loginUsername = document.getElementById("loginUsername"), loginPassword = document.getElementById("loginPassword"), loginBtn = document.getElementById("loginBtn");
@@ -24,11 +25,10 @@ const startVoiceBtn = document.getElementById("startVoice"), stopVoiceBtn = docu
 
 let jitsiApi = null, currentUser = null, currentChannel = "geral", unsubscribe = null;
 
-// Alternar Telas
+// --- LOGIN E CADASTRO ---
 showRegister.onclick = () => { loginForm.style.display = "none"; registerForm.style.display = "block"; };
 showLogin.onclick = () => { loginForm.style.display = "block"; registerForm.style.display = "none"; };
 
-// Cadastro e Login
 registerBtn.onclick = async () => {
   const email = registerUsername.value.trim() + "@minidiscord.com", password = registerPassword.value, avatarFile = registerAvatar.files[0];
   if(!registerUsername.value || !password || !avatarFile) return authMessage.textContent = "Preencha tudo!";
@@ -54,7 +54,7 @@ loginBtn.onclick = async () => {
   } catch(err) { authMessage.textContent = "Erro: " + err.message; }
 };
 
-// Lógica de Troca de Canais
+// --- LOGICA DE CANAIS ---
 document.querySelectorAll('.channel-link').forEach(link => {
     link.onclick = (e) => {
         document.querySelectorAll('.channel-link').forEach(l => l.classList.remove('active'));
@@ -63,7 +63,6 @@ document.querySelectorAll('.channel-link').forEach(link => {
         currentChannel = e.target.getAttribute('data-channel');
         channelName.textContent = "# " + e.target.textContent.replace('# ', '');
         
-        // Limpa a tela para carregar o novo canal
         messages.innerHTML = ""; 
         voiceContainer.style.display = "none"; 
         textChatContent.style.display = "block";
@@ -73,6 +72,7 @@ document.querySelectorAll('.channel-link').forEach(link => {
     };
 });
 
+// --- MENSAGENS ---
 async function sendMessage(){
   const text = messageInput.value.trim(); 
   if(!text || !currentUser) return;
@@ -87,7 +87,7 @@ sendBtn.onclick = sendMessage;
 messageInput.onkeypress = (e) => { if(e.key === "Enter") sendMessage(); };
 
 function loadMessages(){
-  if(unsubscribe) unsubscribe(); // Para de ouvir o canal anterior
+  if(unsubscribe) unsubscribe();
   
   unsubscribe = db.collection("messages")
     .where("channel", "==", currentChannel)
@@ -106,17 +106,19 @@ function loadMessages(){
             </div>`;
       });
       
-      // AUTO-SCROLL: Pequeno delay para garantir que as imagens carreguem
-      setTimeout(() => {
-          messages.scrollTo({
-              top: messages.scrollHeight,
-              behavior: 'smooth'
-          });
-      }, 100);
+      // TRIPLE SCROLL (XEQUE-MATE NO ERRO)
+      [10, 100, 300].forEach(delay => {
+          setTimeout(() => {
+              messages.scrollTo({
+                  top: messages.scrollHeight + 5000,
+                  behavior: delay === 10 ? 'auto' : 'smooth'
+              });
+          }, delay);
+      });
     });
 }
 
-// CALL
+// --- CALL (VOZ) ---
 startVoiceBtn.onclick = () => {
     if(!currentUser) return;
     textChatContent.style.display = "none"; 
