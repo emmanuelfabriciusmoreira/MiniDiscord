@@ -1,4 +1,3 @@
-// 1. Configurações do seu Firebase
 const firebaseConfig = {
   apiKey: "AIzaSyC3mL24ZO-m7158yYVp2l2o1OuSbnEvoxE",
   authDomain: "mini-discord-cc0c5.firebaseapp.com",
@@ -9,192 +8,102 @@ const firebaseConfig = {
   measurementId: "G-5NX67429FX"
 };
 
-// Inicializa o Firebase
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 
-// 2. Elementos do HTML
-const authScreen = document.getElementById("auth-screen");
-const chatScreen = document.getElementById("chat-screen");
-const loginForm = document.getElementById("login-form");
-const registerForm = document.getElementById("register-form");
-const loginUsername = document.getElementById("loginUsername");
-const loginPassword = document.getElementById("loginPassword");
-const loginBtn = document.getElementById("loginBtn");
-const registerUsername = document.getElementById("registerUsername");
-const registerPassword = document.getElementById("registerPassword");
-const registerAvatar = document.getElementById("registerAvatar");
-const registerBtn = document.getElementById("registerBtn");
-const showRegister = document.getElementById("showRegister");
-const showLogin = document.getElementById("showLogin");
-const authMessage = document.getElementById("authMessage");
-const sendBtn = document.getElementById("sendBtn");
-const messageInput = document.getElementById("messageInput");
-const messages = document.getElementById("messages");
-const logoutBtn = document.getElementById("logoutBtn");
+const authScreen = document.getElementById("auth-screen"), chatScreen = document.getElementById("chat-screen");
+const loginForm = document.getElementById("login-form"), registerForm = document.getElementById("register-form");
+const loginUsername = document.getElementById("loginUsername"), loginPassword = document.getElementById("loginPassword"), loginBtn = document.getElementById("loginBtn");
+const registerUsername = document.getElementById("registerUsername"), registerPassword = document.getElementById("registerPassword"), registerAvatar = document.getElementById("registerAvatar"), registerBtn = document.getElementById("registerBtn");
+const showRegister = document.getElementById("showRegister"), showLogin = document.getElementById("showLogin"), authMessage = document.getElementById("authMessage");
+const sendBtn = document.getElementById("sendBtn"), messageInput = document.getElementById("messageInput"), messages = document.getElementById("messages"), logoutBtn = document.getElementById("logoutBtn");
 
-// Elementos de Voz
-const startVoiceBtn = document.getElementById("startVoice");
-const stopVoiceBtn = document.getElementById("stopVoice");
-const voiceContainer = document.getElementById("voice-container");
-const textChatContent = document.getElementById("text-chat-content");
-const channelName = document.getElementById("channel-name");
-let jitsiApi = null;
-let currentUser = null;
+const startVoiceBtn = document.getElementById("startVoice"), stopVoiceBtn = document.getElementById("stopVoice"), voiceContainer = document.getElementById("voice-container"), textChatContent = document.getElementById("text-chat-content"), channelName = document.getElementById("channel-name");
 
-// 3. Alternar entre Login e Cadastro
-showRegister.addEventListener("click", () => {
-    loginForm.style.display = "none";
-    registerForm.style.display = "block";
-    authMessage.textContent = "";
-});
+let jitsiApi = null, currentUser = null, currentChannel = "geral", unsubscribe = null;
 
-showLogin.addEventListener("click", () => {
-    loginForm.style.display = "block";
-    registerForm.style.display = "none";
-    authMessage.textContent = "";
-});
+// Alternar Telas
+showRegister.onclick = () => { loginForm.style.display = "none"; registerForm.style.display = "block"; };
+showLogin.onclick = () => { loginForm.style.display = "block"; registerForm.style.display = "none"; };
 
-// 4. Sistema de Cadastro
-registerBtn.addEventListener("click", async () => {
-  const email = registerUsername.value.trim() + "@minidiscord.com";
-  const password = registerPassword.value;
-  const avatarFile = registerAvatar.files[0];
-
-  if(!registerUsername.value || !password || !avatarFile){
-      authMessage.style.color = "#faa"; 
-      authMessage.textContent = "Preencha tudo e escolha uma foto!"; 
-      return;
-  }
-
+// Cadastro e Login
+registerBtn.onclick = async () => {
+  const email = registerUsername.value.trim() + "@minidiscord.com", password = registerPassword.value, avatarFile = registerAvatar.files[0];
+  if(!registerUsername.value || !password || !avatarFile) return authMessage.textContent = "Preencha tudo!";
   try {
     const userCredential = await auth.createUserWithEmailAndPassword(email, password);
-    currentUser = userCredential.user;
-    
     const reader = new FileReader();
     reader.onload = async (e) => {
-      const avatarData = e.target.result;
-      await db.collection("users").doc(currentUser.uid).set({
-        username: registerUsername.value.trim(),
-        avatar: avatarData
-      });
-      authMessage.style.color = "#3ba55c";
-      authMessage.textContent = "Cadastro OK! Pode entrar.";
+      await db.collection("users").doc(userCredential.user.uid).set({ username: registerUsername.value.trim(), avatar: e.target.result });
+      authMessage.style.color = "#3ba55c"; authMessage.textContent = "OK! Entre agora.";
       setTimeout(() => showLogin.click(), 2000);
     };
     reader.readAsDataURL(avatarFile);
-  } catch(err) {
-    authMessage.style.color = "#faa"; 
-    authMessage.textContent = "Erro: " + err.message;
-  }
-});
+  } catch(err) { authMessage.textContent = err.message; }
+};
 
-// 5. Sistema de Login
-loginBtn.addEventListener("click", async () => {
-  const email = loginUsername.value.trim() + "@minidiscord.com";
-  const password = loginPassword.value;
-
+loginBtn.onclick = async () => {
   try {
-    const userCredential = await auth.signInWithEmailAndPassword(email, password);
-    currentUser = userCredential.user;
-    
-    const userDoc = await db.collection("users").doc(currentUser.uid).get();
-    const userData = userDoc.data();
-    
-    currentUser.username = userData.username;
-    currentUser.avatar = userData.avatar;
-    
-    authScreen.style.display = "none";
-    chatScreen.style.display = "flex";
+    const userCredential = await auth.signInWithEmailAndPassword(loginUsername.value.trim() + "@minidiscord.com", loginPassword.value);
+    const userDoc = await db.collection("users").doc(userCredential.user.uid).get();
+    currentUser = { ...userDoc.data(), uid: userCredential.user.uid };
+    authScreen.style.display = "none"; chatScreen.style.display = "flex";
     loadMessages();
-  } catch(err) {
-    authMessage.style.color = "#faa"; 
-    authMessage.textContent = "Login falhou: " + err.message;
-  }
-});
+  } catch(err) { authMessage.textContent = "Erro: " + err.message; }
+};
 
-// 6. Enviar Mensagem
-sendBtn.addEventListener("click", sendMessage);
-messageInput.addEventListener("keypress", (e) => { if(e.key === "Enter") sendMessage(); });
+// Lógica de Troca de Canais
+document.querySelectorAll('.channel-link').forEach(link => {
+    link.onclick = (e) => {
+        document.querySelectorAll('.channel-link').forEach(l => l.classList.remove('active'));
+        e.target.classList.add('active');
+        currentChannel = e.target.getAttribute('data-channel');
+        channelName.textContent = "# " + e.target.textContent.replace('# ', '');
+        voiceContainer.style.display = "none"; textChatContent.style.display = "block";
+        if (jitsiApi) { jitsiApi.dispose(); jitsiApi = null; }
+        loadMessages();
+    };
+});
 
 async function sendMessage(){
   const text = messageInput.value.trim(); 
   if(!text || !currentUser) return;
-  
   await db.collection("messages").add({
-    username: currentUser.username,
-    avatar: currentUser.avatar,
-    text: text,
-    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+    username: currentUser.username, avatar: currentUser.avatar, text: text,
+    channel: currentChannel, timestamp: firebase.firestore.FieldValue.serverTimestamp()
   });
   messageInput.value = "";
 }
 
-// 7. Carregar mensagens
+sendBtn.onclick = sendMessage;
+messageInput.onkeypress = (e) => { if(e.key === "Enter") sendMessage(); };
+
 function loadMessages(){
-  db.collection("messages").orderBy("timestamp")
-    .onSnapshot(snapshot => {
+  if(unsubscribe) unsubscribe();
+  unsubscribe = db.collection("messages").where("channel", "==", currentChannel).orderBy("timestamp").onSnapshot(snapshot => {
       messages.innerHTML = "";
-      snapshot.forEach(doc => appendMessage(doc.data()));
+      snapshot.forEach(doc => {
+          const m = doc.data();
+          messages.innerHTML += `<div class="message"><img class="avatar" src="${m.avatar}"><div class="message-content"><div class="username">${m.username}</div><div>${m.text}</div></div></div>`;
+      });
       messages.scrollTop = messages.scrollHeight;
+  });
+}
+
+// CALL
+startVoiceBtn.onclick = () => {
+    textChatContent.style.display = "none"; voiceContainer.style.display = "flex"; channelName.textContent = "🔊 CALL";
+    jitsiApi = new JitsiMeetExternalAPI("meet.jit.si", {
+        roomName: "MiniDiscord_Call_" + firebaseConfig.projectId,
+        width: "100%", height: "100%", parentNode: document.querySelector("#jitsi-iframe"),
+        userInfo: { displayName: currentUser.username }
     });
-}
+};
 
-function appendMessage(message){
-  const messageElement = document.createElement("div");
-  messageElement.classList.add("message");
-  const avatar = document.createElement("img");
-  avatar.classList.add("avatar");
-  avatar.src = message.avatar || "https://via.placeholder.com/40";
-  const content = document.createElement("div");
-  content.classList.add("message-content");
-  const nameEl = document.createElement("div");
-  nameEl.classList.add("username");
-  nameEl.textContent = message.username;
-  const textEl = document.createElement("div");
-  textEl.textContent = message.text;
-  content.appendChild(nameEl);
-  content.appendChild(textEl);
-  messageElement.appendChild(avatar);
-  messageElement.appendChild(content);
-  messages.appendChild(messageElement);
-}
+stopVoiceBtn.onclick = () => {
+    if (jitsiApi) jitsiApi.dispose(); jitsiApi = null;
+    voiceContainer.style.display = "none"; textChatContent.style.display = "block"; channelName.textContent = "# " + currentChannel;
+};
 
-// 8. LÓGICA DE VOZ (CALL)
-startVoiceBtn.addEventListener("click", () => {
-    if (!currentUser) return;
-
-    textChatContent.style.display = "none";
-    voiceContainer.style.display = "flex";
-    channelName.textContent = "🔊 CALL";
-
-    const domain = "meet.jit.si";
-    const options = {
-        roomName: "DominusVoz_Sala_Privada_Set_" + firebaseConfig.projectId, 
-        width: "100%",
-        height: "100%",
-        parentNode: document.querySelector("#jitsi-iframe"),
-        userInfo: {
-            displayName: currentUser.username
-        }
-    };
-    jitsiApi = new JitsiMeetExternalAPI(domain, options);
-});
-
-stopVoiceBtn.addEventListener("click", () => {
-    if (jitsiApi) {
-        jitsiApi.dispose();
-        jitsiApi = null;
-    }
-    voiceContainer.style.display = "none";
-    textChatContent.style.display = "block";
-    channelName.textContent = "# Geral";
-});
-
-// 9. Logout
-logoutBtn.addEventListener("click", async () => {
-  if (jitsiApi) jitsiApi.dispose();
-  await auth.signOut();
-  location.reload();
-});
+logoutBtn.onclick = () => { auth.signOut(); location.reload(); };
