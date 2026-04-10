@@ -54,7 +54,7 @@ loginBtn.onclick = async () => {
   } catch(err) { authMessage.textContent = "Erro: " + err.message; }
 };
 
-// --- LOGICA DE CANAIS REFORÇADA ---
+// --- LOGICA DE CANAIS ---
 document.querySelectorAll('.channel-link').forEach(link => {
     link.onclick = (e) => {
         document.querySelectorAll('.channel-link').forEach(l => l.classList.remove('active'));
@@ -63,13 +63,13 @@ document.querySelectorAll('.channel-link').forEach(link => {
         currentChannel = e.currentTarget.getAttribute('data-channel');
         channelName.textContent = "# " + e.currentTarget.textContent.replace('# ', '');
         
-        messages.innerHTML = ""; // Limpa a tela
+        messages.innerHTML = ""; 
         voiceContainer.style.display = "none"; 
         textChatContent.style.display = "block";
         
         if (jitsiApi) { jitsiApi.dispose(); jitsiApi = null; }
         
-        console.log("Mudando para: " + currentChannel);
+        console.log("Mudando para o canal: " + currentChannel);
         loadMessages();
     };
 });
@@ -88,14 +88,17 @@ async function sendMessage(){
 sendBtn.onclick = sendMessage;
 messageInput.onkeypress = (e) => { if(e.key === "Enter") sendMessage(); };
 
+// --- FUNÇÃO CARREGAR MENSAGENS (OPÇÃO A - COM TRATAMENTO DE ERRO) ---
 function loadMessages(){
-  // Desconecta do canal antigo antes de entrar no novo
   if(unsubscribe) unsubscribe();
   
+  console.log("Iniciando conexão com canal: " + currentChannel);
+
   unsubscribe = db.collection("messages")
     .where("channel", "==", currentChannel)
     .orderBy("timestamp", "asc")
     .onSnapshot(snapshot => {
+      console.log("Sucesso! Mensagens sincronizadas para: " + currentChannel);
       messages.innerHTML = "";
       snapshot.forEach(doc => {
           const m = doc.data();
@@ -113,7 +116,14 @@ function loadMessages(){
       jumpToBottom();
       setTimeout(jumpToBottom, 150);
     }, error => {
-      console.error("ERRO FIREBASE: ", error);
+      console.error("ERRO FIREBASE DETECTADO: ", error);
+      
+      // Se o erro for de índice, ele vai disparar este alerta
+      if(error.message.includes("index") || error.code === "failed-precondition") {
+          alert("O Mini Discord precisa criar um índice no Firebase para os chats funcionarem. Procure o link azul no Console (F12) e clique nele!");
+      } else {
+          alert("Aconteceu um erro: " + error.message);
+      }
     });
 }
 
