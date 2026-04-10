@@ -9,49 +9,37 @@ const firebaseConfig = {
 };
 
 firebase.initializeApp(firebaseConfig);
-const auth = firebase.auth();
-const db = firebase.firestore();
+const auth = firebase.auth(), db = firebase.firestore();
 
 let currentUser = null, currentChannel = "geral", unsubscribe = null;
-
-// ELEMENTOS
-const authScreen = document.getElementById("auth-screen"), chatScreen = document.getElementById("chat-screen");
 const msgDiv = document.getElementById("messages"), input = document.getElementById("messageInput");
 
 // --- NOTIFICAÇÕES ---
-function askNotificationPermission() {
-    if (Notification.permission !== "granted" && Notification.permission !== "denied") {
-        Notification.requestPermission();
-    }
-}
-
 function sendNotification(m) {
-    // Só manda se a aba estiver escondida e tiver permissão
     if (document.hidden && Notification.permission === "granted") {
-        new Notification(`Nova mensagem em #${currentChannel}`, {
+        new Notification(`#${currentChannel}`, {
             body: `${m.username}: ${m.text}`,
-            icon: m.avatar || "https://cdn-icons-png.flaticon.com/512/2111/2111370.png"
+            icon: m.avatar
         });
     }
 }
 
-// --- NAVEGAÇÃO ---
+// --- LOGIN / CADASTRO ---
+const authScreen = document.getElementById("auth-screen"), chatScreen = document.getElementById("chat-screen");
 document.getElementById("showRegister").onclick = () => { document.getElementById("login-form").style.display="none"; document.getElementById("register-form").style.display="block"; };
 document.getElementById("showLogin").onclick = () => { document.getElementById("login-form").style.display="block"; document.getElementById("register-form").style.display="none"; };
 
-// LOGIN
 document.getElementById("loginBtn").onclick = async () => {
     try {
         const cred = await auth.signInWithEmailAndPassword(document.getElementById("loginUsername").value.trim() + "@minidiscord.com", document.getElementById("loginPassword").value);
         const doc = await db.collection("users").doc(cred.user.uid).get();
         currentUser = doc.data();
         authScreen.style.display = "none"; chatScreen.style.display = "flex";
-        askNotificationPermission(); // Pede permissão ao logar
+        if (Notification.permission !== "granted") Notification.requestPermission();
         loadMessages();
-    } catch(e) { alert("Usuário ou senha incorretos"); }
+    } catch(e) { alert("Erro ao entrar."); }
 };
 
-// CADASTRO
 document.getElementById("registerBtn").onclick = async () => {
     const user = document.getElementById("registerUsername").value.trim();
     const file = document.getElementById("registerAvatar").files[0];
@@ -67,7 +55,7 @@ document.getElementById("registerBtn").onclick = async () => {
     } catch(e) { alert(e.message); }
 };
 
-// TROCA DE CANAIS
+// --- CANAIS ---
 document.querySelectorAll('.channel-link').forEach(link => {
     link.onclick = (e) => {
         document.querySelectorAll('.channel-link').forEach(l => l.classList.remove('active'));
@@ -78,14 +66,13 @@ document.querySelectorAll('.channel-link').forEach(link => {
     };
 });
 
-// ENVIAR MENSAGEM
+// --- MENSAGENS (TURBO) ---
 async function sendMessage() {
-    if(!input.value.trim() || !currentUser) return;
+    const text = input.value.trim();
+    if(!text || !currentUser) return;
     await db.collection("messages").add({
-        username: currentUser.username, 
-        avatar: currentUser.avatar,
-        text: input.value, 
-        channel: currentChannel, 
+        username: currentUser.username, avatar: currentUser.avatar,
+        text: text, channel: currentChannel, 
         timestamp: firebase.firestore.FieldValue.serverTimestamp()
     });
     input.value = "";
@@ -94,33 +81,39 @@ async function sendMessage() {
 document.getElementById("sendBtn").onclick = sendMessage;
 input.onkeypress = (e) => { if(e.key === "Enter") sendMessage(); };
 
-// CARREGAR MENSAGENS E NOTIFICAR
 function loadMessages() {
     if(unsubscribe) unsubscribe();
     
-    // .docChanges() permite ver o que é NOVO
     unsubscribe = db.collection("messages")
         .where("channel", "==", currentChannel)
         .onSnapshot(snap => {
             let list = [];
             snap.forEach(d => list.push(d.data()));
             
-            // Ordena
+            // Ordenação ultra-rápida
             list.sort((a,b) => (a.timestamp?.toMillis() || 0) - (b.timestamp?.toMillis() || 0));
             
-            // Desenha na tela
-            msgDiv.innerHTML = list.map(m => `
+            // Renderiza tudo de uma vez (evita lag de repintura)
+            const html = list.map(m => `
                 <div class="message">
                     <img src="${m.avatar}" class="avatar">
-                    <div><div class="username">${m.username}</div><div>${m.text}</div></div>
+                    <div class="message-content">
+                        <div class="username">${m.username}</div>
+                        <div>${m.text}</div>
+                    </div>
                 </div>`).join('');
-            msgDiv.scrollTop = msgDiv.scrollHeight;
+            
+            if (msgDiv.innerHTML !== html) {
+                msgDiv.innerHTML = html;
+                msgDiv.scrollTop = msgDiv.scrollHeight;
+            }
 
-            // Verifica se a última mensagem adicionada deve disparar notificação
+            // Notificações sem travar o chat
             snap.docChanges().forEach(change => {
                 if (change.type === "added" && !snap.metadata.hasPendingWrites) {
                     const m = change.doc.data();
-                    if (m.username !== currentUser.username) {
+                    const msgTime = m.timestamp?.toMillis() || 0;
+                    if (m.username !== currentUser.username && (Date.now() - msgTime < 8000)) {
                         sendNotification(m);
                     }
                 }
@@ -128,12 +121,10 @@ function loadMessages() {
         });
 }
 
-// CALL (ABRIR EM NOVA ABA)
+// --- CALL ---
 document.getElementById("startVoice").onclick = () => {
-    if(!currentUser) return;
-    const salaNome = "Call_MiniDiscord_" + currentChannel; 
-    const urlJitsi = `https://meet.jit.si/${salaNome}#config.prejoinPageEnabled=false`;
-    window.open(urlJitsi, '_blank');
+    const url = `https://meet.jit.si/Call_MiniDiscord_${currentChannel}#config.prejoinPageEnabled=false`;
+    window.open(url, '_blank');
 };
 
 document.getElementById("logoutBtn").onclick = () => { auth.signOut(); location.reload(); };
