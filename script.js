@@ -19,33 +19,28 @@ const authScreen = document.getElementById("auth-screen");
 const chatScreen = document.getElementById("chat-screen");
 const loginForm = document.getElementById("login-form");
 const registerForm = document.getElementById("register-form");
-
 const loginUsername = document.getElementById("loginUsername");
 const loginPassword = document.getElementById("loginPassword");
 const loginBtn = document.getElementById("loginBtn");
-
 const registerUsername = document.getElementById("registerUsername");
 const registerPassword = document.getElementById("registerPassword");
 const registerAvatar = document.getElementById("registerAvatar");
 const registerBtn = document.getElementById("registerBtn");
-
 const showRegister = document.getElementById("showRegister");
 const showLogin = document.getElementById("showLogin");
 const authMessage = document.getElementById("authMessage");
-
 const sendBtn = document.getElementById("sendBtn");
 const messageInput = document.getElementById("messageInput");
 const messages = document.getElementById("messages");
 const logoutBtn = document.getElementById("logoutBtn");
 
-// NOVOS ELEMENTOS PARA VOZ
+// Elementos de Voz
 const startVoiceBtn = document.getElementById("startVoice");
 const stopVoiceBtn = document.getElementById("stopVoice");
 const voiceContainer = document.getElementById("voice-container");
 const textChatContent = document.getElementById("text-chat-content");
 const channelName = document.getElementById("channel-name");
 let jitsiApi = null;
-
 let currentUser = null;
 
 // 3. Alternar entre Login e Cadastro
@@ -149,21 +144,16 @@ function loadMessages(){
 function appendMessage(message){
   const messageElement = document.createElement("div");
   messageElement.classList.add("message");
-  
   const avatar = document.createElement("img");
   avatar.classList.add("avatar");
   avatar.src = message.avatar || "https://via.placeholder.com/40";
-  
   const content = document.createElement("div");
   content.classList.add("message-content");
-  
   const nameEl = document.createElement("div");
   nameEl.classList.add("username");
   nameEl.textContent = message.username;
-  
   const textEl = document.createElement("div");
   textEl.textContent = message.text;
-  
   content.appendChild(nameEl);
   content.appendChild(textEl);
   messageElement.appendChild(avatar);
@@ -171,25 +161,23 @@ function appendMessage(message){
   messages.appendChild(messageElement);
 }
 
-// 8. LÓGICA DE VOZ (JITSI)
+// 8. LÓGICA DE VOZ (CALL)
 startVoiceBtn.addEventListener("click", () => {
     if (!currentUser) return;
 
     textChatContent.style.display = "none";
     voiceContainer.style.display = "flex";
-    channelName.textContent = "🔊 Sala de Voz da DØMINUS";
+    channelName.textContent = "🔊 CALL";
 
     const domain = "meet.jit.si";
     const options = {
-        roomName: "DominusVoz_Sala_Exclusiva_99", // Nome da sala
+        roomName: "DominusVoz_Sala_Privada_Set_" + firebaseConfig.projectId, 
         width: "100%",
         height: "100%",
         parentNode: document.querySelector("#jitsi-iframe"),
         userInfo: {
             displayName: currentUser.username
-        },
-        configOverwrite: { startWithAudioMuted: false },
-        interfaceConfigOverwrite: { SHOW_JITSI_WATERMARK: false }
+        }
     };
     jitsiApi = new JitsiMeetExternalAPI(domain, options);
 });
