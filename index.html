@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DØMINUS - Chatter</title>
+    <title>Mini Discord</title>
 
     <link rel="stylesheet" href="style.css">
 
@@ -45,7 +45,7 @@
             <li class="channel-link active"># Geral</li>
             <li class="channel-link"># Jogos</li>
             <li class="channel-link"># Música</li>
-            <li id="startVoice" style="color: #43b581; font-weight: bold; cursor: pointer; margin-top: 20px;">🔊 # Voz da DØMINUS</li>
+            <li id="startVoice" style="color: #43b581; font-weight: bold; cursor: pointer; margin-top: 20px;">🔊 CALL</li>
         </ul>
     </aside>
 
@@ -63,9 +63,9 @@
             </div>
         </div>
 
-        <div id="voice-container" style="display:none; flex: 1; background: #2f3136;">
-            <div id="jitsi-iframe" style="height: 100%; width: 100%;"></div>
-            <button id="stopVoice" style="width: 100%; padding: 10px; background: #f04747; color: white; border: none; cursor:pointer;">Sair da Chamada de Voz</button>
+        <div id="voice-container" style="display:none; flex: 1; flex-direction: column; background: #2f3136;">
+            <div id="jitsi-iframe" style="flex: 1; width: 100%;"></div>
+            <button id="stopVoice" style="width: 100%; padding: 15px; background: #f04747; color: white; border: none; cursor:pointer; font-weight: bold;">SAIR DA CALL</button>
         </div>
     </main>
 </div>
