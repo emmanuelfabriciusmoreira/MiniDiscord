@@ -1,31 +1,195 @@
-* {margin:0;padding:0;box-sizing:border-box;font-family:Arial,sans-serif;}
-body {background-color:#2f3136;color:#fff;}
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: Arial, sans-serif;
+}
+
+/* Trava a página inteira para não rolar o fundo */
+body, html {
+    background-color: #2f3136;
+    color: #fff;
+    height: 100%;
+    overflow: hidden; 
+}
 
 /* Login/Cadastro Screen */
-.login-screen {display:flex;justify-content:center;align-items:center;height:100vh;background-color:#2f3136;}
-.login-box {background-color:#36393F;padding:40px;border-radius:10px;text-align:center;width:300px;}
-.login-box input {width:100%;padding:10px;margin-bottom:15px;border-radius:5px;border:none;}
-.login-box button {width:100%;padding:10px;background-color:#5865F2;border:none;border-radius:5px;cursor:pointer;color:white;margin-bottom:10px;}
-.login-box button:hover {background-color:#4752C4;}
-.login-box span {color:#5865F2;cursor:pointer;}
+.login-screen {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    background-color: #2f3136;
+}
 
-/* Chat container */
-.container {display:flex;height:100vh;}
-.sidebar {width:200px;background-color:#202225;padding:20px;}
-.sidebar h2 {margin-bottom:20px;}
-.sidebar ul {list-style:none;}
-.sidebar li {padding:10px;cursor:pointer;border-radius:5px;}
-.sidebar li:hover {background-color:#5865F2;}
-.chat-area {flex:1;display:flex;flex-direction:column;}
-.chat-header {padding:20px;background-color:#36393F;border-bottom:1px solid #202225;}
-.chat-messages {flex:1;padding:20px;overflow-y:auto;}
-.message {display:flex;margin-bottom:15px;}
-.avatar {width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:bold;margin-right:10px;position:relative;object-fit:cover;}
-.avatar.online::after {content:"";position:absolute;bottom:0;right:0;width:12px;height:12px;border-radius:50%;background-color:#3ba55c;border:2px solid #2f3136;}
-.message-content {background-color:#40444B;padding:10px;border-radius:5px;max-width:70%;}
-.message-content .username {font-weight:bold;color:#ffffff;margin-bottom:3px;}
-.chat-input {display:flex;padding:10px;background-color:#40444B;border-top:1px solid #202225;}
-.chat-input input {flex:1;padding:10px;border:none;border-radius:5px;margin-right:10px;background-color:#2f3136;color:#fff;}
-.chat-input input::placeholder {color:#b9bbbe;}
-.chat-input button {padding:10px 20px;background-color:#5865F2;border:none;border-radius:5px;cursor:pointer;color:white;}
-.chat-input button:hover {background-color:#4752C4;}
+.login-box {
+    background-color: #36393F;
+    padding: 40px;
+    border-radius: 10px;
+    text-align: center;
+    width: 300px;
+}
+
+.login-box input {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 15px;
+    border-radius: 5px;
+    border: none;
+}
+
+.login-box button {
+    width: 100%;
+    padding: 10px;
+    background-color: #5865F2;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    color: white;
+    margin-bottom: 10px;
+}
+
+.login-box button:hover {
+    background-color: #4752C4;
+}
+
+.login-box span {
+    color: #5865F2;
+    cursor: pointer;
+}
+
+/* Chat container - Ocupa a tela toda fixo */
+.container {
+    display: flex;
+    height: 100vh;
+    width: 100vw;
+}
+
+/* Sidebar Fixa */
+.sidebar {
+    width: 200px;
+    background-color: #202225;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.sidebar h2 {
+    margin-bottom: 20px;
+}
+
+.sidebar ul {
+    list-style: none;
+}
+
+.sidebar li {
+    padding: 10px;
+    cursor: pointer;
+    border-radius: 5px;
+    margin-bottom: 5px;
+}
+
+.sidebar li:hover, .sidebar li.active {
+    background-color: #393d42;
+    color: #fff;
+}
+
+/* Área do Chat */
+.chat-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background-color: #36393f;
+}
+
+.chat-header {
+    padding: 20px;
+    background-color: #36393F;
+    border-bottom: 1px solid #202225;
+    z-index: 10;
+}
+
+/* MÁGICA: Só as mensagens rolam */
+.chat-messages {
+    flex: 1;
+    padding: 20px;
+    overflow-y: auto; 
+    display: flex;
+    flex-direction: column;
+}
+
+/* Estilização da Barra de Rolagem (Estilo Discord) */
+.chat-messages::-webkit-scrollbar {
+    width: 8px;
+}
+.chat-messages::-webkit-scrollbar-thumb {
+    background: #202225;
+    border-radius: 10px;
+}
+.chat-messages::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.message {
+    display: flex;
+    margin-bottom: 15px;
+    flex-shrink: 0; /* Impede a mensagem de "esmagar" */
+}
+
+.avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    margin-right: 10px;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+
+.message-content {
+    background-color: #40444B;
+    padding: 10px;
+    border-radius: 5px;
+    max-width: 80%;
+}
+
+.message-content .username {
+    font-weight: bold;
+    color: #ffffff;
+    margin-bottom: 3px;
+}
+
+/* Input Fixo no rodapé */
+.chat-input {
+    display: flex;
+    padding: 20px;
+    background-color: #36393f;
+}
+
+.chat-input input {
+    flex: 1;
+    padding: 12px;
+    border: none;
+    border-radius: 5px;
+    margin-right: 10px;
+    background-color: #40444B;
+    color: #fff;
+}
+
+.chat-input button {
+    padding: 10px 20px;
+    background-color: #5865F2;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    color: white;
+}
+
+/* Container da Call (Jitsi) para não quebrar */
+#voice-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
