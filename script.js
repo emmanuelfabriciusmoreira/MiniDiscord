@@ -8,6 +8,7 @@ const firebaseConfig = {
   measurementId: "G-5NX67429FX"
 };
 
+// Inicializar Firebase
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
@@ -16,8 +17,10 @@ const db = firebase.firestore();
 const authScreen = document.getElementById("auth-screen"), chatScreen = document.getElementById("chat-screen");
 const messages = document.getElementById("messages"), messageInput = document.getElementById("messageInput");
 const channelName = document.getElementById("channel-name");
+const startVoiceBtn = document.getElementById("startVoice"), stopVoiceBtn = document.getElementById("stopVoice");
+const voiceContainer = document.getElementById("voice-container"), textChatContent = document.getElementById("text-chat-content");
 
-let currentUser = null, currentChannel = "geral", unsubscribe = null;
+let jitsiApi = null, currentUser = null, currentChannel = "geral", unsubscribe = null;
 
 // Telas Login/Cadastro
 document.getElementById("showRegister").onclick = () => { document.getElementById("login-form").style.display = "none"; document.getElementById("register-form").style.display = "block"; };
@@ -60,7 +63,13 @@ document.querySelectorAll('.channel-link').forEach(link => {
         e.currentTarget.classList.add('active');
         currentChannel = e.currentTarget.getAttribute('data-channel');
         channelName.textContent = "# " + e.currentTarget.textContent.replace('# ', '');
+        
+        // Garante que o chat de texto apareça e a call suma ao trocar de canal
         messages.innerHTML = "";
+        voiceContainer.style.display = "none"; 
+        textChatContent.style.display = "flex";
+        if (jitsiApi) { jitsiApi.dispose(); jitsiApi = null; }
+        
         loadMessages();
     };
 });
@@ -82,16 +91,12 @@ messageInput.onkeypress = (e) => { if(e.key === "Enter") sendMessage(); };
 function loadMessages(){
   if(unsubscribe) unsubscribe();
   
-  console.log("Conectando ao canal: " + currentChannel);
-
-  // Consulta simples (não pede índice!)
   unsubscribe = db.collection("messages")
     .where("channel", "==", currentChannel)
     .onSnapshot(snapshot => {
       let msgList = [];
       snapshot.forEach(doc => msgList.push(doc.data()));
 
-      // Ordenação Manual
       msgList.sort((a, b) => {
         const tA = a.timestamp ? a.timestamp.toMillis() : Date.now();
         const tB = b.timestamp ? b.timestamp.toMillis() : Date.now();
@@ -113,4 +118,30 @@ function loadMessages(){
     });
 }
 
-document.getElementById("logoutBtn").onclick = () => { auth.signOut(); location.reload(); };
+// --- LOGICA DA CALL (CORRIGIDA) ---
+startVoiceBtn.onclick = () => {
+    if(!currentUser) return;
+    textChatContent.style.display = "none"; 
+    voiceContainer.style.display = "flex"; 
+    channelName.textContent = "🔊 CALL";
+    
+    jitsiApi = new JitsiMeetExternalAPI("meet.jit.si", {
+        roomName: "MiniDiscord_Call_" + firebaseConfig.projectId,
+        width: "100%", height: "100%", parentNode: document.querySelector("#jitsi-iframe"),
+        userInfo: { displayName: currentUser.username }
+    });
+};
+
+stopVoiceBtn.onclick = () => {
+    if (jitsiApi) jitsiApi.dispose(); 
+    jitsiApi = null;
+    voiceContainer.style.display = "none"; 
+    textChatContent.style.display = "flex"; 
+    channelName.textContent = "# " + currentChannel;
+};
+
+document.getElementById("logoutBtn").onclick = () => { 
+    if(jitsiApi) jitsiApi.dispose();
+    auth.signOut(); 
+    location.reload(); 
+};
