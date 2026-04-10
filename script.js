@@ -17,10 +17,7 @@ const msgDiv = document.getElementById("messages"), input = document.getElementB
 // --- NOTIFICAÇÕES ---
 function sendNotification(m) {
     if (document.hidden && Notification.permission === "granted") {
-        new Notification(`#${currentChannel}`, {
-            body: `${m.username}: ${m.text}`,
-            icon: m.avatar
-        });
+        new Notification(`#${currentChannel}`, { body: `${m.username}: ${m.text}`, icon: m.avatar });
     }
 }
 
@@ -58,42 +55,52 @@ document.getElementById("registerBtn").onclick = async () => {
 // --- CANAIS ---
 document.querySelectorAll('.channel-link').forEach(link => {
     link.onclick = (e) => {
+        if(e.currentTarget.dataset.channel === currentChannel) return;
         document.querySelectorAll('.channel-link').forEach(l => l.classList.remove('active'));
         e.currentTarget.classList.add('active');
         currentChannel = e.currentTarget.dataset.channel;
         document.getElementById("channel-name").innerText = "# " + currentChannel;
+        msgDiv.innerHTML = ""; // Limpa visual imediato
         loadMessages();
     };
 });
 
-// --- MENSAGENS (TURBO) ---
-async function sendMessage() {
+// --- ENVIAR (INSTANTÂNEO) ---
+function sendMessage() {
     const text = input.value.trim();
     if(!text || !currentUser) return;
-    await db.collection("messages").add({
-        username: currentUser.username, avatar: currentUser.avatar,
-        text: text, channel: currentChannel, 
+    
+    // Envia sem 'await' para não travar a UI
+    db.collection("messages").add({
+        username: currentUser.username, 
+        avatar: currentUser.avatar,
+        text: text, 
+        channel: currentChannel, 
         timestamp: firebase.firestore.FieldValue.serverTimestamp()
     });
+    
     input.value = "";
 }
 
 document.getElementById("sendBtn").onclick = sendMessage;
 input.onkeypress = (e) => { if(e.key === "Enter") sendMessage(); };
 
+// --- CARREGAR (OTIMIZADO) ---
 function loadMessages() {
     if(unsubscribe) unsubscribe();
     
+    // Limita as últimas 50 mensagens para não pesar o navegador
     unsubscribe = db.collection("messages")
         .where("channel", "==", currentChannel)
+        .orderBy("timestamp", "desc")
+        .limit(50)
         .onSnapshot(snap => {
             let list = [];
             snap.forEach(d => list.push(d.data()));
             
-            // Ordenação ultra-rápida
-            list.sort((a,b) => (a.timestamp?.toMillis() || 0) - (b.timestamp?.toMillis() || 0));
+            // Reverte para mostrar a mais recente embaixo
+            list.reverse();
             
-            // Renderiza tudo de uma vez (evita lag de repintura)
             const html = list.map(m => `
                 <div class="message">
                     <img src="${m.avatar}" class="avatar">
@@ -103,21 +110,25 @@ function loadMessages() {
                     </div>
                 </div>`).join('');
             
-            if (msgDiv.innerHTML !== html) {
+            // Só mexe no DOM se o número de mensagens mudou
+            if (msgDiv.children.length !== list.length) {
                 msgDiv.innerHTML = html;
                 msgDiv.scrollTop = msgDiv.scrollHeight;
             }
 
-            // Notificações sem travar o chat
+            // Notificações
             snap.docChanges().forEach(change => {
                 if (change.type === "added" && !snap.metadata.hasPendingWrites) {
                     const m = change.doc.data();
-                    const msgTime = m.timestamp?.toMillis() || 0;
-                    if (m.username !== currentUser.username && (Date.now() - msgTime < 8000)) {
+                    if (m.username !== currentUser.username) {
                         sendNotification(m);
                     }
                 }
             });
+        }, error => {
+            // Se der erro de índice no Firebase, o orderBy falha. 
+            // Nesse caso, o console vai te dar um link para clicar e criar o índice.
+            console.error("Erro no Snapshot: ", error);
         });
 }
 
