@@ -8,10 +8,12 @@ const firebaseConfig = {
   measurementId: "G-5NX67429FX"
 };
 
+// Inicializar Firebase
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 
+// Elementos da Interface
 const authScreen = document.getElementById("auth-screen"), chatScreen = document.getElementById("chat-screen");
 const loginForm = document.getElementById("login-form"), registerForm = document.getElementById("register-form");
 const loginUsername = document.getElementById("loginUsername"), loginPassword = document.getElementById("loginPassword"), loginBtn = document.getElementById("loginBtn");
@@ -23,11 +25,10 @@ const startVoiceBtn = document.getElementById("startVoice"), stopVoiceBtn = docu
 
 let jitsiApi = null, currentUser = null, currentChannel = "geral", unsubscribe = null;
 
-// TELAS
+// --- LOGIN E CADASTRO ---
 showRegister.onclick = () => { loginForm.style.display = "none"; registerForm.style.display = "block"; };
 showLogin.onclick = () => { loginForm.style.display = "block"; registerForm.style.display = "none"; };
 
-// LOGIN/CADASTRO
 registerBtn.onclick = async () => {
   const email = registerUsername.value.trim() + "@minidiscord.com", password = registerPassword.value, avatarFile = registerAvatar.files[0];
   if(!registerUsername.value || !password || !avatarFile) return authMessage.textContent = "Preencha tudo!";
@@ -53,22 +54,27 @@ loginBtn.onclick = async () => {
   } catch(err) { authMessage.textContent = "Erro: " + err.message; }
 };
 
-// CANAIS
+// --- LOGICA DE CANAIS REFORÇADA ---
 document.querySelectorAll('.channel-link').forEach(link => {
     link.onclick = (e) => {
         document.querySelectorAll('.channel-link').forEach(l => l.classList.remove('active'));
-        e.target.classList.add('active');
-        currentChannel = e.target.getAttribute('data-channel');
-        channelName.textContent = "# " + e.target.textContent.replace('# ', '');
-        messages.innerHTML = ""; 
+        e.currentTarget.classList.add('active');
+        
+        currentChannel = e.currentTarget.getAttribute('data-channel');
+        channelName.textContent = "# " + e.currentTarget.textContent.replace('# ', '');
+        
+        messages.innerHTML = ""; // Limpa a tela
         voiceContainer.style.display = "none"; 
         textChatContent.style.display = "block";
+        
         if (jitsiApi) { jitsiApi.dispose(); jitsiApi = null; }
+        
+        console.log("Mudando para: " + currentChannel);
         loadMessages();
     };
 });
 
-// MENSAGENS
+// --- MENSAGENS ---
 async function sendMessage(){
   const text = messageInput.value.trim(); 
   if(!text || !currentUser) return;
@@ -83,10 +89,12 @@ sendBtn.onclick = sendMessage;
 messageInput.onkeypress = (e) => { if(e.key === "Enter") sendMessage(); };
 
 function loadMessages(){
+  // Desconecta do canal antigo antes de entrar no novo
   if(unsubscribe) unsubscribe();
+  
   unsubscribe = db.collection("messages")
     .where("channel", "==", currentChannel)
-    .orderBy("timestamp")
+    .orderBy("timestamp", "asc")
     .onSnapshot(snapshot => {
       messages.innerHTML = "";
       snapshot.forEach(doc => {
@@ -100,17 +108,22 @@ function loadMessages(){
                 </div>
             </div>`;
       });
+      
       const jumpToBottom = () => { messages.scrollTop = messages.scrollHeight; };
       jumpToBottom();
-      setTimeout(jumpToBottom, 100);
-      setTimeout(jumpToBottom, 400);
+      setTimeout(jumpToBottom, 150);
+    }, error => {
+      console.error("ERRO FIREBASE: ", error);
     });
 }
 
-// CALLS
+// --- CALL (VOZ) ---
 startVoiceBtn.onclick = () => {
     if(!currentUser) return;
-    textChatContent.style.display = "none"; voiceContainer.style.display = "flex"; channelName.textContent = "🔊 CALL";
+    textChatContent.style.display = "none"; 
+    voiceContainer.style.display = "flex"; 
+    channelName.textContent = "🔊 CALL";
+    
     jitsiApi = new JitsiMeetExternalAPI("meet.jit.si", {
         roomName: "MiniDiscord_Call_" + firebaseConfig.projectId,
         width: "100%", height: "100%", parentNode: document.querySelector("#jitsi-iframe"),
@@ -121,7 +134,13 @@ startVoiceBtn.onclick = () => {
 stopVoiceBtn.onclick = () => {
     if (jitsiApi) jitsiApi.dispose(); 
     jitsiApi = null;
-    voiceContainer.style.display = "none"; textChatContent.style.display = "block"; channelName.textContent = "# " + currentChannel;
+    voiceContainer.style.display = "none"; 
+    textChatContent.style.display = "block"; 
+    channelName.textContent = "# " + currentChannel;
 };
 
-logoutBtn.onclick = () => { auth.signOut(); location.reload(); };
+logoutBtn.onclick = () => { 
+    if(jitsiApi) jitsiApi.dispose();
+    auth.signOut(); 
+    location.reload(); 
+};
