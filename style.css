@@ -5,22 +5,19 @@
     font-family: Arial, sans-serif;
 }
 
-/* Trava o fundo para a página não ter duas barras de rolagem */
 body, html {
     background-color: #2f3136;
     color: #fff;
     height: 100vh;
-    overflow: hidden; 
+    overflow: hidden; /* Não deixa a página toda rolar */
 }
 
-/* Container Principal */
 .container {
     display: flex;
     height: 100vh;
     width: 100vw;
 }
 
-/* Sidebar Estática */
 .sidebar {
     width: 200px;
     background-color: #202225;
@@ -43,34 +40,34 @@ body, html {
     background-color: #393d42;
 }
 
-/* Área da Direita */
 .chat-area {
     flex: 1;
     display: flex;
     flex-direction: column;
-    height: 100%; /* Ocupa a altura da tela */
+    height: 100%;
     background-color: #36393f;
-    overflow: hidden; /* Garante que nada saia daqui */
+    min-width: 0;
 }
 
 .chat-header {
     padding: 15px 20px;
     background-color: #36393F;
     border-bottom: 1px solid #202225;
-    flex-shrink: 0; /* Não deixa o cabeçalho sumir */
+    flex-shrink: 0;
 }
 
-/* ÁREA DE MENSAGENS (Onde o scroll acontece) */
+/* AQUI ESTÁ A MÁGICA DO SCROLL */
 .chat-messages {
     flex: 1;
     padding: 20px;
-    overflow-y: auto; /* Habilita o scroll vertical */
+    overflow-y: auto !important; 
     display: flex;
     flex-direction: column;
-    min-height: 0; /* Essencial para o scroll funcionar em Flexbox */
+    height: 0; /* Isso força o Flexbox a criar o scroll interno */
+    min-height: 0;
 }
 
-/* Scrollbar estilo Discord */
+/* Barra de rolagem estilo Discord */
 .chat-messages::-webkit-scrollbar {
     width: 8px;
 }
@@ -105,12 +102,11 @@ body, html {
     margin-bottom: 3px;
 }
 
-/* Input fixo no fundo */
 .chat-input {
     padding: 20px;
     background-color: #36393f;
     display: flex;
-    flex-shrink: 0; /* Garante que o input não suma */
+    flex-shrink: 0;
 }
 
 .chat-input input {
@@ -132,7 +128,6 @@ body, html {
     color: white;
 }
 
-/* Telas de Login/Voz */
+#voice-container { flex: 1; display: flex; flex-direction: column; }
 .login-screen { display: flex; justify-content: center; align-items: center; height: 100vh; }
 .login-box { background: #36393F; padding: 40px; border-radius: 10px; width: 300px; text-align: center; }
-#voice-container { flex: 1; display: flex; flex-direction: column; }
