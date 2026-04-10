@@ -13,135 +13,101 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 
-// Elementos
+// Elementos da Interface
 const authScreen = document.getElementById("auth-screen"), chatScreen = document.getElementById("chat-screen");
 const messages = document.getElementById("messages"), messageInput = document.getElementById("messageInput");
 const channelName = document.getElementById("channel-name");
-const startVoiceBtn = document.getElementById("startVoice"), stopVoiceBtn = document.getElementById("stopVoice");
-const voiceContainer = document.getElementById("voice-container"), textChatContent = document.getElementById("text-chat-content");
 
-let jitsiApi = null, currentUser = null, currentChannel = "geral", unsubscribe = null;
+let currentUser = null, currentChannel = "geral", unsubscribe = null;
 
-// Telas Login/Cadastro
+// --- LOGIN E CADASTRO ---
 document.getElementById("showRegister").onclick = () => { document.getElementById("login-form").style.display = "none"; document.getElementById("register-form").style.display = "block"; };
 document.getElementById("showLogin").onclick = () => { document.getElementById("login-form").style.display = "block"; document.getElementById("register-form").style.display = "none"; };
 
-// Login
 document.getElementById("loginBtn").onclick = async () => {
-  try {
-    const userCredential = await auth.signInWithEmailAndPassword(document.getElementById("loginUsername").value.trim() + "@minidiscord.com", document.getElementById("loginPassword").value);
-    const userDoc = await db.collection("users").doc(userCredential.user.uid).get();
-    currentUser = { ...userDoc.data(), uid: userCredential.user.uid };
-    authScreen.style.display = "none"; chatScreen.style.display = "flex";
-    loadMessages();
-  } catch(err) { alert("Erro: " + err.message); }
+    try {
+        const cred = await auth.signInWithEmailAndPassword(document.getElementById("loginUsername").value.trim() + "@minidiscord.com", document.getElementById("loginPassword").value);
+        const doc = await db.collection("users").doc(cred.user.uid).get();
+        currentUser = doc.data();
+        authScreen.style.display = "none"; chatScreen.style.display = "flex";
+        loadMessages();
+    } catch(e) { alert("Erro ao entrar: Verifique usuário e senha."); }
 };
 
-// Cadastro
 document.getElementById("registerBtn").onclick = async () => {
-  const username = document.getElementById("registerUsername").value.trim();
-  const pass = document.getElementById("registerPassword").value;
-  const avatarFile = document.getElementById("registerAvatar").files[0];
-  if(!username || !pass || !avatarFile) return alert("Preencha tudo!");
-  
-  try {
-    const userCredential = await auth.createUserWithEmailAndPassword(username + "@minidiscord.com", pass);
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-      await db.collection("users").doc(userCredential.user.uid).set({ username, avatar: e.target.result });
-      alert("Sucesso! Faça o login.");
-      location.reload();
-    };
-    reader.readAsDataURL(avatarFile);
-  } catch(err) { alert(err.message); }
+    const user = document.getElementById("registerUsername").value.trim();
+    const file = document.getElementById("registerAvatar").files[0];
+    if(!user || !file) return alert("Preencha o nome e escolha uma foto!");
+    try {
+        const cred = await auth.createUserWithEmailAndPassword(user + "@minidiscord.com", document.getElementById("registerPassword").value);
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            await db.collection("users").doc(cred.user.uid).set({ username: user, avatar: e.target.result });
+            alert("Conta criada! Agora é só logar.");
+            location.reload();
+        };
+        reader.readAsDataURL(file);
+    } catch(e) { alert("Erro no cadastro: " + e.message); }
 };
 
-// Troca de canais
+// --- LOGICA DE CANAIS ---
 document.querySelectorAll('.channel-link').forEach(link => {
     link.onclick = (e) => {
         document.querySelectorAll('.channel-link').forEach(l => l.classList.remove('active'));
         e.currentTarget.classList.add('active');
         currentChannel = e.currentTarget.getAttribute('data-channel');
         channelName.textContent = "# " + e.currentTarget.textContent.replace('# ', '');
-        
-        // Garante que o chat de texto apareça e a call suma ao trocar de canal
         messages.innerHTML = "";
-        voiceContainer.style.display = "none"; 
-        textChatContent.style.display = "flex";
-        if (jitsiApi) { jitsiApi.dispose(); jitsiApi = null; }
-        
         loadMessages();
     };
 });
 
-// Mensagens
+// --- MENSAGENS (ORDENAÇÃO MANUAL) ---
 async function sendMessage(){
-  const text = messageInput.value.trim(); 
-  if(!text || !currentUser) return;
-  await db.collection("messages").add({
-    username: currentUser.username, avatar: currentUser.avatar, text,
-    channel: currentChannel, timestamp: firebase.firestore.FieldValue.serverTimestamp()
-  });
-  messageInput.value = "";
+    const text = messageInput.value.trim(); 
+    if(!text || !currentUser) return;
+    await db.collection("messages").add({
+        username: currentUser.username, avatar: currentUser.avatar, text,
+        channel: currentChannel, timestamp: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    messageInput.value = "";
 }
 
 document.getElementById("sendBtn").onclick = sendMessage;
 messageInput.onkeypress = (e) => { if(e.key === "Enter") sendMessage(); };
 
 function loadMessages(){
-  if(unsubscribe) unsubscribe();
-  
-  unsubscribe = db.collection("messages")
-    .where("channel", "==", currentChannel)
-    .onSnapshot(snapshot => {
-      let msgList = [];
-      snapshot.forEach(doc => msgList.push(doc.data()));
+    if(unsubscribe) unsubscribe();
+    unsubscribe = db.collection("messages")
+        .where("channel", "==", currentChannel)
+        .onSnapshot(snapshot => {
+            let msgList = [];
+            snapshot.forEach(doc => msgList.push(doc.data()));
+            // Ordena por tempo para não bugar a ordem
+            msgList.sort((a, b) => (a.timestamp?.toMillis() || 0) - (b.timestamp?.toMillis() || 0));
 
-      msgList.sort((a, b) => {
-        const tA = a.timestamp ? a.timestamp.toMillis() : Date.now();
-        const tB = b.timestamp ? b.timestamp.toMillis() : Date.now();
-        return tA - tB;
-      });
-
-      messages.innerHTML = "";
-      msgList.forEach(m => {
-          messages.innerHTML += `
-            <div class="message">
-                <img class="avatar" src="${m.avatar}">
-                <div class="message-content">
-                    <div class="username">${m.username}</div>
-                    <div>${m.text}</div>
-                </div>
-            </div>`;
-      });
-      messages.scrollTop = messages.scrollHeight;
-    });
+            messages.innerHTML = msgList.map(m => `
+                <div class="message">
+                    <img src="${m.avatar}" class="avatar">
+                    <div class="message-content">
+                        <div class="username">${m.username}</div>
+                        <div>${m.text}</div>
+                    </div>
+                </div>`).join('');
+            messages.scrollTop = messages.scrollHeight;
+        });
 }
 
-// --- LOGICA DA CALL (CORRIGIDA) ---
-startVoiceBtn.onclick = () => {
+// --- CALL (ABRINDO EM NOVA ABA) ---
+document.getElementById("startVoice").onclick = () => {
     if(!currentUser) return;
-    textChatContent.style.display = "none"; 
-    voiceContainer.style.display = "flex"; 
-    channelName.textContent = "🔊 CALL";
     
-    jitsiApi = new JitsiMeetExternalAPI("meet.jit.si", {
-        roomName: "MiniDiscord_Call_" + firebaseConfig.projectId,
-        width: "100%", height: "100%", parentNode: document.querySelector("#jitsi-iframe"),
-        userInfo: { displayName: currentUser.username }
-    });
+    // Nome da sala limpo como você pediu
+    const salaNome = "Call_MiniDiscord_" + firebaseConfig.projectId;
+    const urlJitsi = "https://meet.jit.si/" + salaNome;
+
+    // Abre em nova aba para evitar erros de permissão e limites de tempo
+    window.open(urlJitsi, '_blank');
 };
 
-stopVoiceBtn.onclick = () => {
-    if (jitsiApi) jitsiApi.dispose(); 
-    jitsiApi = null;
-    voiceContainer.style.display = "none"; 
-    textChatContent.style.display = "flex"; 
-    channelName.textContent = "# " + currentChannel;
-};
-
-document.getElementById("logoutBtn").onclick = () => { 
-    if(jitsiApi) jitsiApi.dispose();
-    auth.signOut(); 
-    location.reload(); 
-};
+document.getElementById("logoutBtn").onclick = () => { auth.signOut(); location.reload(); };
