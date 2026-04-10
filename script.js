@@ -8,100 +8,98 @@ const firebaseConfig = {
   measurementId: "G-5NX67429FX"
 };
 
-// Inicializar Firebase
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 
-// Elementos da Interface
+// Elementos
 const authScreen = document.getElementById("auth-screen"), chatScreen = document.getElementById("chat-screen");
-const loginForm = document.getElementById("login-form"), registerForm = document.getElementById("register-form");
-const loginUsername = document.getElementById("loginUsername"), loginPassword = document.getElementById("loginPassword"), loginBtn = document.getElementById("loginBtn");
-const registerUsername = document.getElementById("registerUsername"), registerPassword = document.getElementById("registerPassword"), registerAvatar = document.getElementById("registerAvatar"), registerBtn = document.getElementById("registerBtn");
-const showRegister = document.getElementById("showRegister"), showLogin = document.getElementById("showLogin"), authMessage = document.getElementById("authMessage");
-const sendBtn = document.getElementById("sendBtn"), messageInput = document.getElementById("messageInput"), messages = document.getElementById("messages"), logoutBtn = document.getElementById("logoutBtn");
+const messages = document.getElementById("messages"), messageInput = document.getElementById("messageInput");
+const channelName = document.getElementById("channel-name");
 
-const startVoiceBtn = document.getElementById("startVoice"), stopVoiceBtn = document.getElementById("stopVoice"), voiceContainer = document.getElementById("voice-container"), textChatContent = document.getElementById("text-chat-content"), channelName = document.getElementById("channel-name");
+let currentUser = null, currentChannel = "geral", unsubscribe = null;
 
-let jitsiApi = null, currentUser = null, currentChannel = "geral", unsubscribe = null;
+// Telas Login/Cadastro
+document.getElementById("showRegister").onclick = () => { document.getElementById("login-form").style.display = "none"; document.getElementById("register-form").style.display = "block"; };
+document.getElementById("showLogin").onclick = () => { document.getElementById("login-form").style.display = "block"; document.getElementById("register-form").style.display = "none"; };
 
-// --- LOGIN E CADASTRO ---
-showRegister.onclick = () => { loginForm.style.display = "none"; registerForm.style.display = "block"; };
-showLogin.onclick = () => { loginForm.style.display = "block"; registerForm.style.display = "none"; };
-
-registerBtn.onclick = async () => {
-  const email = registerUsername.value.trim() + "@minidiscord.com", password = registerPassword.value, avatarFile = registerAvatar.files[0];
-  if(!registerUsername.value || !password || !avatarFile) return authMessage.textContent = "Preencha tudo!";
+// Login
+document.getElementById("loginBtn").onclick = async () => {
   try {
-    const userCredential = await auth.createUserWithEmailAndPassword(email, password);
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-      await db.collection("users").doc(userCredential.user.uid).set({ username: registerUsername.value.trim(), avatar: e.target.result });
-      authMessage.style.color = "#3ba55c"; authMessage.textContent = "OK! Entre agora.";
-      setTimeout(() => showLogin.click(), 2000);
-    };
-    reader.readAsDataURL(avatarFile);
-  } catch(err) { authMessage.textContent = err.message; }
-};
-
-loginBtn.onclick = async () => {
-  try {
-    const userCredential = await auth.signInWithEmailAndPassword(loginUsername.value.trim() + "@minidiscord.com", loginPassword.value);
+    const userCredential = await auth.signInWithEmailAndPassword(document.getElementById("loginUsername").value.trim() + "@minidiscord.com", document.getElementById("loginPassword").value);
     const userDoc = await db.collection("users").doc(userCredential.user.uid).get();
     currentUser = { ...userDoc.data(), uid: userCredential.user.uid };
     authScreen.style.display = "none"; chatScreen.style.display = "flex";
     loadMessages();
-  } catch(err) { authMessage.textContent = "Erro: " + err.message; }
+  } catch(err) { alert("Erro: " + err.message); }
 };
 
-// --- LOGICA DE CANAIS ---
+// Cadastro
+document.getElementById("registerBtn").onclick = async () => {
+  const username = document.getElementById("registerUsername").value.trim();
+  const pass = document.getElementById("registerPassword").value;
+  const avatarFile = document.getElementById("registerAvatar").files[0];
+  if(!username || !pass || !avatarFile) return alert("Preencha tudo!");
+  
+  try {
+    const userCredential = await auth.createUserWithEmailAndPassword(username + "@minidiscord.com", pass);
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      await db.collection("users").doc(userCredential.user.uid).set({ username, avatar: e.target.result });
+      alert("Sucesso! Faça o login.");
+      location.reload();
+    };
+    reader.readAsDataURL(avatarFile);
+  } catch(err) { alert(err.message); }
+};
+
+// Troca de canais
 document.querySelectorAll('.channel-link').forEach(link => {
     link.onclick = (e) => {
         document.querySelectorAll('.channel-link').forEach(l => l.classList.remove('active'));
         e.currentTarget.classList.add('active');
-        
         currentChannel = e.currentTarget.getAttribute('data-channel');
         channelName.textContent = "# " + e.currentTarget.textContent.replace('# ', '');
-        
-        messages.innerHTML = ""; 
-        voiceContainer.style.display = "none"; 
-        textChatContent.style.display = "block";
-        
-        if (jitsiApi) { jitsiApi.dispose(); jitsiApi = null; }
-        
-        console.log("Mudando para o canal: " + currentChannel);
+        messages.innerHTML = "";
         loadMessages();
     };
 });
 
-// --- MENSAGENS ---
+// Mensagens
 async function sendMessage(){
   const text = messageInput.value.trim(); 
   if(!text || !currentUser) return;
   await db.collection("messages").add({
-    username: currentUser.username, avatar: currentUser.avatar, text: text,
+    username: currentUser.username, avatar: currentUser.avatar, text,
     channel: currentChannel, timestamp: firebase.firestore.FieldValue.serverTimestamp()
   });
   messageInput.value = "";
 }
 
-sendBtn.onclick = sendMessage;
+document.getElementById("sendBtn").onclick = sendMessage;
 messageInput.onkeypress = (e) => { if(e.key === "Enter") sendMessage(); };
 
-// --- FUNÇÃO CARREGAR MENSAGENS (OPÇÃO A - COM TRATAMENTO DE ERRO) ---
 function loadMessages(){
   if(unsubscribe) unsubscribe();
   
-  console.log("Iniciando conexão com canal: " + currentChannel);
+  console.log("Conectando ao canal: " + currentChannel);
 
+  // Consulta simples (não pede índice!)
   unsubscribe = db.collection("messages")
     .where("channel", "==", currentChannel)
-    .orderBy("timestamp", "asc")
     .onSnapshot(snapshot => {
-      console.log("Sucesso! Mensagens sincronizadas para: " + currentChannel);
+      let msgList = [];
+      snapshot.forEach(doc => msgList.push(doc.data()));
+
+      // Ordenação Manual
+      msgList.sort((a, b) => {
+        const tA = a.timestamp ? a.timestamp.toMillis() : Date.now();
+        const tB = b.timestamp ? b.timestamp.toMillis() : Date.now();
+        return tA - tB;
+      });
+
       messages.innerHTML = "";
-      snapshot.forEach(doc => {
-          const m = doc.data();
+      msgList.forEach(m => {
           messages.innerHTML += `
             <div class="message">
                 <img class="avatar" src="${m.avatar}">
@@ -111,46 +109,8 @@ function loadMessages(){
                 </div>
             </div>`;
       });
-      
-      const jumpToBottom = () => { messages.scrollTop = messages.scrollHeight; };
-      jumpToBottom();
-      setTimeout(jumpToBottom, 150);
-    }, error => {
-      console.error("ERRO FIREBASE DETECTADO: ", error);
-      
-      // Se o erro for de índice, ele vai disparar este alerta
-      if(error.message.includes("index") || error.code === "failed-precondition") {
-          alert("O Mini Discord precisa criar um índice no Firebase para os chats funcionarem. Procure o link azul no Console (F12) e clique nele!");
-      } else {
-          alert("Aconteceu um erro: " + error.message);
-      }
+      messages.scrollTop = messages.scrollHeight;
     });
 }
 
-// --- CALL (VOZ) ---
-startVoiceBtn.onclick = () => {
-    if(!currentUser) return;
-    textChatContent.style.display = "none"; 
-    voiceContainer.style.display = "flex"; 
-    channelName.textContent = "🔊 CALL";
-    
-    jitsiApi = new JitsiMeetExternalAPI("meet.jit.si", {
-        roomName: "MiniDiscord_Call_" + firebaseConfig.projectId,
-        width: "100%", height: "100%", parentNode: document.querySelector("#jitsi-iframe"),
-        userInfo: { displayName: currentUser.username }
-    });
-};
-
-stopVoiceBtn.onclick = () => {
-    if (jitsiApi) jitsiApi.dispose(); 
-    jitsiApi = null;
-    voiceContainer.style.display = "none"; 
-    textChatContent.style.display = "block"; 
-    channelName.textContent = "# " + currentChannel;
-};
-
-logoutBtn.onclick = () => { 
-    if(jitsiApi) jitsiApi.dispose();
-    auth.signOut(); 
-    location.reload(); 
-};
+document.getElementById("logoutBtn").onclick = () => { auth.signOut(); location.reload(); };
