@@ -106,15 +106,16 @@ function loadMessages(){
             </div>`;
       });
       
-      // TRIPLE SCROLL (XEQUE-MATE NO ERRO)
-      [10, 100, 300].forEach(delay => {
-          setTimeout(() => {
-              messages.scrollTo({
-                  top: messages.scrollHeight + 5000,
-                  behavior: delay === 10 ? 'auto' : 'smooth'
-              });
-          }, delay);
-      });
+      // FUNÇÃO DE SCROLL REFORÇADA
+      const jumpToBottom = () => {
+        messages.scrollTop = messages.scrollHeight;
+      };
+
+      // Executa em vários tempos para garantir que as imagens não quebrem o scroll
+      jumpToBottom();
+      setTimeout(jumpToBottom, 50);
+      setTimeout(jumpToBottom, 200);
+      setTimeout(jumpToBottom, 500);
     });
 }
 
