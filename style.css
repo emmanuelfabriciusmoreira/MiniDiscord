@@ -115,3 +115,20 @@ body, html {
 
 .chat-messages::-webkit-scrollbar { width: 8px; }
 .chat-messages::-webkit-scrollbar-thumb { background: #202225; border-radius: 10px; }
+
+/* Estilo dos Vezinhos tipo WhatsApp */
+.status-tick {
+    font-size: 11px;
+    margin-left: 6px;
+    color: #8e9297; /* Cinza para 1 V */
+    font-weight: bold;
+}
+
+.status-tick.confirmed {
+    color: #00aff4; /* Azul para 2 Vs */
+}
+
+/* Deixa a mensagem levemente transparente enquanto envia */
+.sending {
+    opacity: 0.7;
+}
