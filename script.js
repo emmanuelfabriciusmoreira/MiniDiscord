@@ -1,134 +1,93 @@
-const firebaseConfig = {
-    apiKey: "AIzaSyC3mL24ZO-m7158yYVp2l2o1OuSbnEvoxE",
-    authDomain: "mini-discord-cc0c5.firebaseapp.com",
-    projectId: "mini-discord-cc0c5",
-    storageBucket: "mini-discord-cc0c5.firebasestorage.app",
-    messagingSenderId: "392335666272",
-    appId: "1:392335666272:web:7661e19e6b9e0078d7a705",
-    measurementId: "G-5NX67429FX"
+// ... (mantenha seu firebaseConfig e as variáveis de topo iguais)
+
+// --- ELEMENTOS ADICIONAIS ---
+const imageInput = document.getElementById("imageInput");
+const clipBtn = document.getElementById("clipBtn");
+
+// Abrir seletor de arquivo ao clicar no clipe
+clipBtn.onclick = () => imageInput.click();
+
+// Quando selecionar uma imagem pelo botão
+imageInput.onchange = (e) => {
+    const file = e.target.files[0];
+    if (file) processarEEnviarImagem(file);
 };
 
-firebase.initializeApp(firebaseConfig);
-const auth = firebase.auth(), db = firebase.firestore();
-
-let currentUser = null, currentChannel = "geral", unsubscribe = null;
-const msgDiv = document.getElementById("messages"), input = document.getElementById("messageInput");
-
-// --- NOTIFICAÇÕES ---
-function sendNotification(m) {
-    if (document.hidden && Notification.permission === "granted") {
-        new Notification(`#${currentChannel}`, { body: `${m.username}: ${m.text}`, icon: m.avatar });
+// Capturar CTRL+V (Print Screen)
+window.addEventListener('paste', e => {
+    const item = e.clipboardData.items[0];
+    if (item && item.type.indexOf("image") !== -1) {
+        const file = item.getAsFile();
+        processarEEnviarImagem(file);
     }
-}
-
-// --- LOGIN / CADASTRO ---
-const authScreen = document.getElementById("auth-screen"), chatScreen = document.getElementById("chat-screen");
-document.getElementById("showRegister").onclick = () => { document.getElementById("login-form").style.display="none"; document.getElementById("register-form").style.display="block"; };
-document.getElementById("showLogin").onclick = () => { document.getElementById("login-form").style.display="block"; document.getElementById("register-form").style.display="none"; };
-
-document.getElementById("loginBtn").onclick = async () => {
-    try {
-        const cred = await auth.signInWithEmailAndPassword(inputUser(), inputPass());
-        const doc = await db.collection("users").doc(cred.user.uid).get();
-        currentUser = doc.data();
-        authScreen.style.display = "none"; chatScreen.style.display = "flex";
-        if (Notification.permission !== "granted") Notification.requestPermission();
-        loadMessages();
-    } catch(e) { alert("Erro ao entrar."); }
-};
-
-function inputUser() { return document.getElementById("loginUsername").value.trim() + "@minidiscord.com"; }
-function inputPass() { return document.getElementById("loginPassword").value; }
-
-document.getElementById("registerBtn").onclick = async () => {
-    const user = document.getElementById("registerUsername").value.trim();
-    const file = document.getElementById("registerAvatar").files[0];
-    if(!file) return alert("Selecione uma foto!");
-    try {
-        const cred = await auth.createUserWithEmailAndPassword(user + "@minidiscord.com", document.getElementById("registerPassword").value);
-        const reader = new FileReader();
-        reader.onload = async (e) => {
-            await db.collection("users").doc(cred.user.uid).set({ username: user, avatar: e.target.result });
-            location.reload();
-        };
-        reader.readAsDataURL(file);
-    } catch(e) { alert(e.message); }
-};
-
-// --- CANAIS ---
-document.querySelectorAll('.channel-link').forEach(link => {
-    link.onclick = (e) => {
-        if(e.currentTarget.dataset.channel === currentChannel) return;
-        document.querySelectorAll('.channel-link').forEach(l => l.classList.remove('active'));
-        e.currentTarget.classList.add('active');
-        currentChannel = e.currentTarget.dataset.channel;
-        document.getElementById("channel-name").innerText = "# " + currentChannel;
-        msgDiv.innerHTML = "";
-        loadMessages();
-    };
 });
 
-// --- ENVIO INSTANTÂNEO COM "V" ---
-function sendMessage() {
-    const text = input.value.trim();
-    if(!text || !currentUser) return;
-
-    // Criamos o HTML temporário com 1 V cinza
-    const tempHtml = `
-        <div class="message sending">
-            <img src="${currentUser.avatar}" class="avatar">
-            <div class="message-content">
-                <div class="username">${currentUser.username} <span class="status-tick">✓</span></div>
-                <div>${text}</div>
-            </div>
-        </div>`;
+// Função principal para enviar imagem
+function processarEEnviarImagem(file) {
+    if (!currentUser) return;
     
-    msgDiv.innerHTML += tempHtml;
-    msgDiv.scrollTop = msgDiv.scrollHeight;
-    input.value = "";
+    const reader = new FileReader();
+    reader.onload = (event) => {
+        const base64 = event.target.result;
+        
+        // Envio otimista (mostra na tela antes de ir pro banco)
+        const tempId = "img_" + Date.now();
+        msgDiv.innerHTML += `
+            <div class="message sending" id="${tempId}">
+                <img src="${currentUser.avatar}" class="avatar">
+                <div class="message-content">
+                    <div class="username">${currentUser.username} <span class="status-tick">✓</span></div>
+                    <img src="${base64}" style="max-width:250px; border-radius:8px; display:block; margin-top:5px;">
+                </div>
+            </div>`;
+        msgDiv.scrollTop = msgDiv.scrollHeight;
 
-    // Envia para o banco
-    db.collection("messages").add({
-        username: currentUser.username,
-        avatar: currentUser.avatar,
-        text: text,
-        channel: currentChannel,
-        timestamp: firebase.firestore.FieldValue.serverTimestamp()
-    });
+        // Envia pro Firebase
+        db.collection("messages").add({
+            username: currentUser.username,
+            avatar: currentUser.avatar,
+            image: base64, // A imagem vai aqui
+            text: "", 
+            channel: currentChannel,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        });
+    };
+    reader.readAsDataURL(file);
+    imageInput.value = ""; // Limpa o input
 }
 
-document.getElementById("sendBtn").onclick = sendMessage;
-input.onkeypress = (e) => { if(e.key === "Enter") sendMessage(); };
-
-// --- CARREGAR (LOGICA DO ✓✓) ---
+// --- ATUALIZAÇÃO DA FUNÇÃO LOADMESSAGES ---
 function loadMessages() {
     if(unsubscribe) unsubscribe();
     
     unsubscribe = db.collection("messages")
         .where("channel", "==", currentChannel)
         .orderBy("timestamp", "desc")
-        .limit(35)
+        .limit(30) 
         .onSnapshot(snap => {
             let list = [];
             snap.forEach(d => list.push(d.data()));
             list.reverse();
 
             const html = list.map(m => {
-                // Se tem timestamp do servidor, coloca 2 Vs azuis
                 const confirmed = m.timestamp != null;
                 const ticks = confirmed ? '<span class="status-tick confirmed">✓✓</span>' : '<span class="status-tick">✓</span>';
                 
+                // Se tiver imagem, mostra a imagem. Se não, mostra o texto.
+                const conteudoMsg = m.image 
+                    ? `<img src="${m.image}" style="max-width:250px; border-radius:8px; display:block; margin-top:5px;">` 
+                    : `<div>${m.text}</div>`;
+
                 return `
                 <div class="message">
                     <img src="${m.avatar}" class="avatar">
                     <div class="message-content">
                         <div class="username">${m.username} ${ticks}</div>
-                        <div>${m.text}</div>
+                        ${conteudoMsg}
                     </div>
                 </div>`;
             }).join('');
             
-            // Só redesenha se houver mudança real
             if (msgDiv.innerHTML !== html) {
                 msgDiv.innerHTML = html;
                 msgDiv.scrollTop = msgDiv.scrollHeight;
@@ -144,10 +103,4 @@ function loadMessages() {
         });
 }
 
-// --- CALL ---
-document.getElementById("startVoice").onclick = () => {
-    const url = `https://meet.jit.si/Call_MiniDiscord_${currentChannel}#config.prejoinPageEnabled=false`;
-    window.open(url, '_blank');
-};
-
-document.getElementById("logoutBtn").onclick = () => { auth.signOut(); location.reload(); };
+// Mantenha suas funções de sendMessage() de texto e Login como estavam!
