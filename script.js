@@ -9,145 +9,164 @@ const firebaseConfig = {
 };
 
 firebase.initializeApp(firebaseConfig);
-const auth = firebase.auth(), db = firebase.firestore();
+const auth = firebase.auth();
+const db = firebase.firestore();
 
-let currentUser = null, currentChannel = "geral", unsubscribe = null;
-const msgDiv = document.getElementById("messages"), input = document.getElementById("messageInput");
+let currentUser = null;
+let currentChannel = "geral";
+let unsubscribe = null;
 
-// --- NOTIFICAÇÕES ---
-function sendNotification(m) {
-    if (document.hidden && Notification.permission === "granted") {
-        new Notification(`#${currentChannel}`, { body: `${m.username}: ${m.text}`, icon: m.avatar });
-    }
-}
+window.onload = () => {
+    const msgDiv = document.getElementById("messages");
+    const input = document.getElementById("messageInput");
 
-// --- LOGIN / CADASTRO ---
-const authScreen = document.getElementById("auth-screen"), chatScreen = document.getElementById("chat-screen");
-document.getElementById("showRegister").onclick = () => { document.getElementById("login-form").style.display="none"; document.getElementById("register-form").style.display="block"; };
-document.getElementById("showLogin").onclick = () => { document.getElementById("login-form").style.display="block"; document.getElementById("register-form").style.display="none"; };
-
-document.getElementById("loginBtn").onclick = async () => {
-    try {
-        const cred = await auth.signInWithEmailAndPassword(inputUser(), inputPass());
-        const doc = await db.collection("users").doc(cred.user.uid).get();
-        currentUser = doc.data();
-        authScreen.style.display = "none"; chatScreen.style.display = "flex";
-        if (Notification.permission !== "granted") Notification.requestPermission();
-        loadMessages();
-    } catch(e) { alert("Erro ao entrar."); }
-};
-
-function inputUser() { return document.getElementById("loginUsername").value.trim() + "@minidiscord.com"; }
-function inputPass() { return document.getElementById("loginPassword").value; }
-
-document.getElementById("registerBtn").onclick = async () => {
-    const user = document.getElementById("registerUsername").value.trim();
-    const file = document.getElementById("registerAvatar").files[0];
-    if(!file) return alert("Selecione uma foto!");
-    try {
-        const cred = await auth.createUserWithEmailAndPassword(user + "@minidiscord.com", document.getElementById("registerPassword").value);
-        const reader = new FileReader();
-        reader.onload = async (e) => {
-            await db.collection("users").doc(cred.user.uid).set({ username: user, avatar: e.target.result });
-            location.reload();
-        };
-        reader.readAsDataURL(file);
-    } catch(e) { alert(e.message); }
-};
-
-// --- CANAIS ---
-document.querySelectorAll('.channel-link').forEach(link => {
-    link.onclick = (e) => {
-        if(e.currentTarget.dataset.channel === currentChannel) return;
-        document.querySelectorAll('.channel-link').forEach(l => l.classList.remove('active'));
-        e.currentTarget.classList.add('active');
-        currentChannel = e.currentTarget.dataset.channel;
-        document.getElementById("channel-name").innerText = "# " + currentChannel;
-        msgDiv.innerHTML = "";
-        loadMessages();
+    // --- NAVEGAÇÃO ENTRE TELAS ---
+    document.getElementById("showRegister").onclick = () => {
+        document.getElementById("login-form").style.display = "none";
+        document.getElementById("register-form").style.display = "block";
     };
-});
 
-// --- ENVIO INSTANTÂNEO COM "V" ---
-function sendMessage() {
-    const text = input.value.trim();
-    if(!text || !currentUser) return;
+    document.getElementById("showLogin").onclick = () => {
+        document.getElementById("login-form").style.display = "block";
+        document.getElementById("register-form").style.display = "none";
+    };
 
-    // Criamos o HTML temporário com 1 V cinza
-    const tempHtml = `
-        <div class="message sending">
-            <img src="${currentUser.avatar}" class="avatar">
-            <div class="message-content">
-                <div class="username">${currentUser.username} <span class="status-tick">✓</span></div>
-                <div>${text}</div>
-            </div>
-        </div>`;
-    
-    msgDiv.innerHTML += tempHtml;
-    msgDiv.scrollTop = msgDiv.scrollHeight;
-    input.value = "";
+    // --- SISTEMA DE LOGIN ---
+    document.getElementById("loginBtn").onclick = async () => {
+        const user = document.getElementById("loginUsername").value.trim();
+        const pass = document.getElementById("loginPassword").value;
+        if(!user || !pass) return alert("Preencha os campos!");
 
-    // Envia para o banco
-    db.collection("messages").add({
-        username: currentUser.username,
-        avatar: currentUser.avatar,
-        text: text,
-        channel: currentChannel,
-        timestamp: firebase.firestore.FieldValue.serverTimestamp()
-    });
-}
-
-document.getElementById("sendBtn").onclick = sendMessage;
-input.onkeypress = (e) => { if(e.key === "Enter") sendMessage(); };
-
-// --- CARREGAR (LOGICA DO ✓✓) ---
-function loadMessages() {
-    if(unsubscribe) unsubscribe();
-    
-    unsubscribe = db.collection("messages")
-        .where("channel", "==", currentChannel)
-        .orderBy("timestamp", "desc")
-        .limit(35)
-        .onSnapshot(snap => {
-            let list = [];
-            snap.forEach(d => list.push(d.data()));
-            list.reverse();
-
-            const html = list.map(m => {
-                // Se tem timestamp do servidor, coloca 2 Vs azuis
-                const confirmed = m.timestamp != null;
-                const ticks = confirmed ? '<span class="status-tick confirmed">✓✓</span>' : '<span class="status-tick">✓</span>';
-                
-                return `
-                <div class="message">
-                    <img src="${m.avatar}" class="avatar">
-                    <div class="message-content">
-                        <div class="username">${m.username} ${ticks}</div>
-                        <div>${m.text}</div>
-                    </div>
-                </div>`;
-            }).join('');
+        try {
+            const cred = await auth.signInWithEmailAndPassword(user + "@minidiscord.com", pass);
+            const doc = await db.collection("users").doc(cred.user.uid).get();
+            currentUser = doc.data();
             
-            // Só redesenha se houver mudança real
-            if (msgDiv.innerHTML !== html) {
-                msgDiv.innerHTML = html;
-                msgDiv.scrollTop = msgDiv.scrollHeight;
-            }
+            document.getElementById("auth-screen").style.display = "none";
+            document.getElementById("chat-screen").style.display = "flex";
+            
+            if (Notification.permission !== "granted") Notification.requestPermission();
+            
+            loadMessages();
+        } catch (e) {
+            alert("Erro: Usuário ou senha incorretos.");
+        }
+    };
 
-            // Notificações
-            snap.docChanges().forEach(change => {
-                if (change.type === "added" && !snap.metadata.hasPendingWrites) {
-                    const m = change.doc.data();
-                    if (m.username !== currentUser.username) sendNotification(m);
-                }
-            });
+    // --- SISTEMA DE CADASTRO ---
+    document.getElementById("registerBtn").onclick = async () => {
+        const user = document.getElementById("registerUsername").value.trim();
+        const pass = document.getElementById("registerPassword").value;
+        const file = document.getElementById("registerAvatar").files[0];
+
+        if (!user || !pass || !file) return alert("Preencha tudo e escolha uma foto!");
+
+        try {
+            const cred = await auth.createUserWithEmailAndPassword(user + "@minidiscord.com", pass);
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                await db.collection("users").doc(cred.user.uid).set({
+                    username: user,
+                    avatar: e.target.result // Avatar do perfil ainda ok!
+                });
+                location.reload();
+            };
+            reader.readAsDataURL(file);
+        } catch (e) { alert("Erro ao cadastrar: " + e.message); }
+    };
+
+    // --- ENVIAR MENSAGEM (INSTANTÂNEO) ---
+    async function sendMessage() {
+        const text = input.value.trim();
+        if (!text || !currentUser) return;
+
+        // "Fingir" envio para velocidade (1 V)
+        const tempId = "t_" + Date.now();
+        msgDiv.innerHTML += `
+            <div class="message" id="${tempId}" style="opacity:0.7">
+                <img src="${currentUser.avatar}" class="avatar">
+                <div class="message-content">
+                    <div class="username">${currentUser.username} <span class="status-tick">✓</span></div>
+                    <div>${text}</div>
+                </div>
+            </div>`;
+        msgDiv.scrollTop = msgDiv.scrollHeight;
+        input.value = "";
+
+        // Enviar real pro banco
+        await db.collection("messages").add({
+            username: currentUser.username,
+            avatar: currentUser.avatar,
+            text: text,
+            channel: currentChannel,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
         });
-}
+    }
 
-// --- CALL ---
-document.getElementById("startVoice").onclick = () => {
-    const url = `https://meet.jit.si/Call_MiniDiscord_${currentChannel}#config.prejoinPageEnabled=false`;
-    window.open(url, '_blank');
+    document.getElementById("sendBtn").onclick = sendMessage;
+    input.onkeypress = (e) => { if (e.key === "Enter") sendMessage(); };
+
+    // --- CARREGAR MENSAGENS (✓✓) ---
+    function loadMessages() {
+        if (unsubscribe) unsubscribe();
+        
+        unsubscribe = db.collection("messages")
+            .where("channel", "==", currentChannel)
+            .orderBy("timestamp", "desc")
+            .limit(40) // Mostra as últimas 40
+            .onSnapshot(snap => {
+                let list = [];
+                snap.forEach(d => list.push(d.data()));
+                list.reverse();
+
+                msgDiv.innerHTML = list.map(m => {
+                    const confirmed = m.timestamp != null;
+                    const ticks = confirmed ? '<span class="status-tick confirmed">✓✓</span>' : '<span class="status-tick">✓</span>';
+                    
+                    return `
+                        <div class="message">
+                            <img src="${m.avatar}" class="avatar">
+                            <div class="message-content">
+                                <div class="username">${m.username} ${ticks}</div>
+                                <div>${m.text}</div>
+                            </div>
+                        </div>`;
+                }).join('');
+                
+                msgDiv.scrollTop = msgDiv.scrollHeight;
+
+                // Notificação se estiver em outra aba
+                snap.docChanges().forEach(change => {
+                    if (change.type === "added" && !snap.metadata.hasPendingWrites) {
+                        const m = change.doc.data();
+                        if (m.username !== currentUser.username) {
+                            if (document.hidden && Notification.permission === "granted") {
+                                new Notification(`#${currentChannel}`, { body: `${m.username}: ${m.text}`, icon: m.avatar });
+                            }
+                        }
+                    }
+                });
+            });
+    }
+
+    // --- CANAIS ---
+    document.querySelectorAll('.channel-link').forEach(link => {
+        link.onclick = (e) => {
+            document.querySelectorAll('.channel-link').forEach(l => l.classList.remove('active'));
+            e.currentTarget.classList.add('active');
+            currentChannel = e.currentTarget.dataset.channel;
+            document.getElementById("channel-name").innerText = "# " + currentChannel;
+            loadMessages();
+        };
+    });
+
+    // --- CALL E LOGOUT ---
+    document.getElementById("startVoice").onclick = () => {
+        window.open(`https://meet.jit.si/MiniDiscord_${currentChannel}`, '_blank');
+    };
+
+    document.getElementById("logoutBtn").onclick = () => { 
+        auth.signOut(); 
+        location.reload(); 
+    };
 };
-
-document.getElementById("logoutBtn").onclick = () => { auth.signOut(); location.reload(); };
